@@ -1,5 +1,6 @@
 package com.example.appjardin.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,9 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.appjardin.ui.theme.DarkText
 
 @Composable
 fun CircularGauge(
@@ -26,18 +28,20 @@ fun CircularGauge(
     stateColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val animatedPercentage by animateFloatAsState(targetValue = percentage, label = "ProgressAnimation")
+    
     Box(
-        modifier = modifier.size(240.dp),
+        modifier = modifier.size(220.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            val strokeWidth = 16.dp.toPx()
+            val strokeWidth = 18.dp.toPx()
             val startAngle = 135f
             val sweepAngle = 270f
             
-            // Background arc
+            // Background arc in light gray
             drawArc(
-                color = Color.LightGray,
+                color = Color(0xFFE0E0E0),
                 startAngle = startAngle,
                 sweepAngle = sweepAngle,
                 useCenter = false,
@@ -45,8 +49,8 @@ fun CircularGauge(
                 size = Size(size.width, size.height)
             )
             
-            // Foreground arc
-            val progressSweep = (percentage / 100f) * sweepAngle
+            // Foreground active arc
+            val progressSweep = (animatedPercentage.coerceIn(0f, 100f) / 100f) * sweepAngle
             drawArc(
                 color = stateColor,
                 startAngle = startAngle,
@@ -59,15 +63,15 @@ fun CircularGauge(
         
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${percentage.toInt()}%",
-                fontSize = 48.sp,
+                text = "${animatedPercentage.toInt()}%",
+                fontSize = 44.sp,
                 fontWeight = FontWeight.Bold,
-                color = stateColor
+                color = DarkText
             )
             Text(
                 text = stateText,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 color = stateColor
             )
         }

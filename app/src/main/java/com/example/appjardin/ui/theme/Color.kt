@@ -2,18 +2,18 @@ package com.example.appjardin.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Verde Alegre (Primary / Neutral Color)
+val ColorVerdeAlegre = Color(0xFF00C853)
+val ColorNeutral = ColorVerdeAlegre
+val ColorNoPlant = ColorVerdeAlegre
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Humidity State Colors
+val ColorLowMoisture = Color(0xFFE53935)     // Red
+val ColorMediumMoisture = Color(0xFFFF9800)  // Orange
+val ColorGoodMoisture = Color(0xFF4CAF50)    // Green
+val ColorExcessMoisture = Color(0xFFD32F2F)  // Dark Red
 
-// App colors
+// Surface & Text Colors
 val CreamBackground = Color(0xFFF5F1E8)
-val ColorNoPlant = Color(0xFF607D8B) // Blue Grey
-val ColorLowMoisture = Color(0xFFE53935) // Red
-val ColorMediumMoisture = Color(0xFFFF9800) // Orange
-val ColorGoodMoisture = Color(0xFF4CAF50) // Green
-val ColorExcessMoisture = Color(0xFFD32F2F) // Darker Red
+val DarkText = Color(0xFF212121)
+val SecondaryDarkText = Color(0xFF555555)
