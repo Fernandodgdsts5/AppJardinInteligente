@@ -34,6 +34,7 @@ fun WelcomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(CreamBackground)
+            .systemBarsPadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
