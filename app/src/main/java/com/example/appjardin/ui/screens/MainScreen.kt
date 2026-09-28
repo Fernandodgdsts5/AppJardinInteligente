@@ -24,7 +24,10 @@ import com.example.appjardin.viewmodel.GardenViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: GardenViewModel) {
+fun MainScreen(
+    viewModel: GardenViewModel,
+    onNavigateToSettings: () -> Unit = {}
+) {
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
     
@@ -57,6 +60,9 @@ fun MainScreen(viewModel: GardenViewModel) {
             MoistureState.EXCESS_MOISTURE -> "Exceso de humedad"
         }
     }
+
+    val isExcess = telemetry?.exceso == true || (plant != null && humidity > plant!!.humedadExceso)
+    val pumpOn by viewModel.pumpOn.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -112,48 +118,66 @@ fun MainScreen(viewModel: GardenViewModel) {
             val desc = if (plant == null) {
                 "Ve a Ajustes y selecciona una planta para empezar a monitorear"
             } else {
-                "Planta actual: ${plant!!.name}. Recomendado entre ${plant!!.inicioRiego}% y ${plant!!.finRiego}%."
+                "Planta actual: ${plant!!.name}. Óptimo: ${plant!!.humedadMinima}% - ${plant!!.humedadBuena}% | Exceso: > ${plant!!.humedadExceso}%"
             }
             
             Text(
                 text = desc,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 color = DarkText,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            // Bottom Action Button
-            val pumpOn = telemetry?.bomba == true
-            val buttonText = if (plant == null) {
-                "ELEGIR PLANTA"
-            } else if (pumpOn) {
-                "BOMBA ACTIVA"
-            } else if (state == MoistureState.LOW_MOISTURE) {
-                "REGAR"
-            } else {
-                "NO REGAR"
+            // Bottom Action Button Logic
+            val (buttonText, isEnabled, buttonAction) = when {
+                plant == null -> {
+                    Triple("ELEGIR PLANTA", true) { onNavigateToSettings() }
+                }
+                pumpOn -> {
+                    Triple("DETENER RIEGO", true) { viewModel.togglePump(false) }
+                }
+                isExcess -> {
+                    Triple("EXCESO DE HUMEDAD", false) {}
+                }
+                else -> {
+                    Triple("REGAR", true) { viewModel.togglePump(true) }
+                }
             }
 
-            Button(
-                onClick = {
-                    if (plant != null) {
-                        viewModel.togglePump(!pumpOn)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(bottom = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = activeColor),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Text(
-                    text = buttonText,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (plant != null && isExcess && !pumpOn) {
+                    Text(
+                        text = "El riego manual está bloqueado por exceso de humedad (> ${plant!!.humedadExceso}%)",
+                        color = ColorExcessMoisture,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                }
+
+                Button(
+                    onClick = buttonAction,
+                    enabled = isEnabled,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(bottom = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = activeColor,
+                        disabledContainerColor = Color.LightGray,
+                        disabledContentColor = Color.DarkGray
+                    ),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text(
+                        text = buttonText,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isEnabled) Color.White else Color.DarkGray
+                    )
+                }
             }
         }
     }

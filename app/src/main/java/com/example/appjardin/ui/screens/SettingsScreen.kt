@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -197,7 +199,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                                                 color = DarkText
                                             )
                                             Text(
-                                                text = "Riego: ${plantItem.inicioRiego}% - ${plantItem.finRiego}% | Max: ${plantItem.recomendadaMax}%",
+                                                text = "Min: ${plantItem.humedadMinima}% | Opt: ${plantItem.humedadBuena}% | Exceso: > ${plantItem.humedadExceso}%",
                                                 fontSize = 12.sp,
                                                 color = Color.Gray
                                             )
@@ -222,10 +224,9 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                         ) {
                             Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
                                 Text("Parámetros de ${p.name}:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DarkText)
-                                Text("• Riego necesario: < ${p.inicioRiego}%", fontSize = 12.sp, color = DarkText)
-                                Text("• Riego óptimo: ${p.inicioRiego}% - ${p.finRiego}%", fontSize = 12.sp, color = DarkText)
-                                Text("• Máxima recomendada: ${p.recomendadaMax}%", fontSize = 12.sp, color = DarkText)
-                                Text("• Exceso de agua: > ${p.exceso}%", fontSize = 12.sp, color = DarkText)
+                                Text("• Humedad Mínima (humedadMinima): ${p.humedadMinima}%", fontSize = 12.sp, color = DarkText)
+                                Text("• Humedad Buena (humedadBuena): ${p.humedadBuena}%", fontSize = 12.sp, color = DarkText)
+                                Text("• Humedad Exceso (humedadExceso): ${p.humedadExceso}%", fontSize = 12.sp, color = DarkText)
                             }
                         }
                     }
@@ -270,9 +271,8 @@ fun AddPlantDialog(
     activeColor: Color
 ) {
     var name by remember { mutableStateOf("") }
-    var inicioStr by remember { mutableStateOf("") }
-    var finStr by remember { mutableStateOf("") }
-    var maxStr by remember { mutableStateOf("") }
+    var minStr by remember { mutableStateOf("") }
+    var buenaStr by remember { mutableStateOf("") }
     var excesoStr by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf("") }
 
@@ -284,31 +284,28 @@ fun AddPlantDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nombre") },
+                    label = { Text("Nombre de la Planta") },
                     singleLine = true
                 )
                 OutlinedTextField(
-                    value = inicioStr,
-                    onValueChange = { inicioStr = it },
-                    label = { Text("Inicio Riego (%)") },
+                    value = minStr,
+                    onValueChange = { minStr = it },
+                    label = { Text("Humedad Mínima (%) [humedadMinima]") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
                 OutlinedTextField(
-                    value = finStr,
-                    onValueChange = { finStr = it },
-                    label = { Text("Fin Riego (%)") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = maxStr,
-                    onValueChange = { maxStr = it },
-                    label = { Text("Recomendada Máx (%)") },
+                    value = buenaStr,
+                    onValueChange = { buenaStr = it },
+                    label = { Text("Humedad Buena (%) [humedadBuena]") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = excesoStr,
                     onValueChange = { excesoStr = it },
-                    label = { Text("Exceso Agua (%)") },
+                    label = { Text("Humedad Exceso (%) [humedadExceso]") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
 
@@ -325,23 +322,23 @@ fun AddPlantDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val inicio = inicioStr.toIntOrNull()
-                    val fin = finStr.toIntOrNull()
-                    val max = maxStr.toIntOrNull()
+                    val min = minStr.toIntOrNull()
+                    val buena = buenaStr.toIntOrNull()
                     val exceso = excesoStr.toIntOrNull()
 
-                    if (name.isBlank() || inicio == null || fin == null || max == null || exceso == null) {
+                    if (name.isBlank() || min == null || buena == null || exceso == null) {
                         errorMsg = "Completa todos los campos con números válidos."
-                    } else if (!(inicio < fin && fin < max && max < exceso)) {
-                        errorMsg = "Verifica: Inicio < Fin < Máx < Exceso"
+                    } else if (min < 0 || buena < 0 || exceso > 100) {
+                        errorMsg = "Los porcentajes deben estar entre 0% y 100%."
+                    } else if (!(min < buena && buena < exceso)) {
+                        errorMsg = "Regla requerida: humedadMinima < humedadBuena < humedadExceso"
                     } else {
                         onAdd(
                             PlantEntity(
                                 name = name,
-                                inicioRiego = inicio,
-                                finRiego = fin,
-                                recomendadaMax = max,
-                                exceso = exceso
+                                humedadMinima = min,
+                                humedadBuena = buena,
+                                humedadExceso = exceso
                             )
                         )
                     }

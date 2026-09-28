@@ -2,6 +2,7 @@ package com.example.appjardin.viewmodel
 
 import android.app.Application
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothProfile
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import com.example.appjardin.model.MoistureState
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
@@ -46,6 +48,9 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     val discoveredDevices = bleManager.discoveredDevices
     val isScanning = bleManager.isScanning
 
+    private val _pumpOn = MutableStateFlow(false)
+    val pumpOn: StateFlow<Boolean> = _pumpOn
+
     init {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.insertDefaultPlantsIfEmpty()
@@ -59,13 +64,25 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                         val plant = repository.getPlantById(id)
                         _selectedPlant.value = plant
                         plant?.let {
-                            val config = Config(it.inicioRiego, it.finRiego, it.recomendadaMax, it.exceso)
+                            val config = Config(it.humedadMinima, it.humedadBuena, it.humedadExceso)
                             bleManager.writeConfig(config)
                         }
                     } else {
                         _selectedPlant.value = null
                     }
                 }
+        }
+
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            connectionState.collect { state ->
+                if (state == BluetoothProfile.STATE_CONNECTED) {
+                    _selectedPlant.value?.let { plant ->
+                        val config = Config(plant.humedadMinima, plant.humedadBuena, plant.humedadExceso)
+                        delay(1000L)
+                        bleManager.writeConfig(config)
+                    }
+                }
+            }
         }
         
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
@@ -78,6 +95,13 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                         repository.addOrUpdateSession(plant.id, plant.name, tele.humedad)
                     }
                 }
+        }
+
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            telemetry.filterNotNull().collect { tele ->
+                _pumpOn.value = tele.bomba
+                Log.d("JardinBLE", "Telemetría recibida -> bomba=${tele.bomba}")
+            }
         }
     }
 
@@ -118,16 +142,18 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     }
     
     fun togglePump(turnOn: Boolean) {
-        val currentPlant = _selectedPlant.value ?: return
-        Log.d("GardenViewModel", "Toggling pump for plant ${currentPlant.name}: $turnOn")
+        _pumpOn.value = turnOn // Actualización INSTANTÁNEA (optimista)
+        val action = if (turnOn) "regar" else "detener"
+        Log.d("JardinBLE", "Enviando comando: $action")
+        bleManager.sendWateringAction(action)
     }
 
     fun getMoistureState(humidity: Float, plant: PlantEntity?): MoistureState {
         if (plant == null) return MoistureState.NO_PLANT
         return when {
-            humidity < plant.inicioRiego -> MoistureState.LOW_MOISTURE
-            humidity >= plant.inicioRiego && humidity < plant.finRiego -> MoistureState.MEDIUM_MOISTURE
-            humidity >= plant.finRiego && humidity <= plant.exceso -> MoistureState.GOOD_MOISTURE
+            humidity < plant.humedadMinima -> MoistureState.LOW_MOISTURE
+            humidity >= plant.humedadMinima && humidity < plant.humedadBuena -> MoistureState.MEDIUM_MOISTURE
+            humidity >= plant.humedadBuena && humidity <= plant.humedadExceso -> MoistureState.GOOD_MOISTURE
             else -> MoistureState.EXCESS_MOISTURE
         }
     }

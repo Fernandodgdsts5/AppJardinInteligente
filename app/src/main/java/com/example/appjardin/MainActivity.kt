@@ -41,39 +41,56 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppJardinTheme {
-                var permissionsGranted by remember { mutableStateOf(false) }
-
-                val permissionLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestMultiplePermissions()
-                ) { results ->
-                    permissionsGranted = results.all { it.value }
-                }
+                val rootNavController = rememberNavController()
 
                 val enableBtLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) { _ ->
-                    viewModel.startScan()
+                    rootNavController.navigate("scan")
                 }
 
-                fun checkPermissionsAndStartBt(onPermissionOk: () -> Unit) {
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestMultiplePermissions()
+                ) { results ->
+                    val allOk = results.all { it.value }
+                    if (allOk) {
+                        if (!viewModel.isBluetoothEnabled()) {
+                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                            enableBtLauncher.launch(enableBtIntent)
+                        } else {
+                            rootNavController.navigate("scan")
+                        }
+                    }
+                }
+
+                fun requestPermissionsAndNavigate() {
                     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         arrayOf(
                             Manifest.permission.BLUETOOTH_SCAN,
                             Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.ACCESS_FINE_LOCATION
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
                         )
                     } else {
                         arrayOf(
                             Manifest.permission.BLUETOOTH,
                             Manifest.permission.BLUETOOTH_ADMIN,
-                            Manifest.permission.ACCESS_FINE_LOCATION
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
                         )
                     }
-                    permissionLauncher.launch(permissions)
-                    onPermissionOk()
-                }
 
-                val rootNavController = rememberNavController()
+                    if (viewModel.bleManager.hasBlePermissions()) {
+                        if (!viewModel.isBluetoothEnabled()) {
+                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                            enableBtLauncher.launch(enableBtIntent)
+                        } else {
+                            rootNavController.navigate("scan")
+                        }
+                    } else {
+                        permissionLauncher.launch(permissions)
+                    }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -87,13 +104,7 @@ class MainActivity : ComponentActivity() {
                             WelcomeScreen(
                                 viewModel = viewModel,
                                 onConnectClick = {
-                                    checkPermissionsAndStartBt {
-                                        if (!viewModel.isBluetoothEnabled()) {
-                                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                                            enableBtLauncher.launch(enableBtIntent)
-                                        }
-                                        rootNavController.navigate("scan")
-                                    }
+                                    requestPermissionsAndNavigate()
                                 }
                             )
                         }
@@ -240,7 +251,12 @@ fun MainAppContent(viewModel: GardenViewModel) {
                 navController = bottomNavController,
                 startDestination = "main"
             ) {
-                composable("main") { MainScreen(viewModel) }
+                composable("main") {
+                    MainScreen(
+                        viewModel = viewModel,
+                        onNavigateToSettings = { bottomNavController.navigate("settings") }
+                    )
+                }
                 composable("history") { HistoryScreen(viewModel) }
                 composable("settings") { SettingsScreen(viewModel) }
             }

@@ -7,10 +7,9 @@ import androidx.room.PrimaryKey
 data class PlantEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val inicioRiego: Int,
-    val finRiego: Int,
-    val recomendadaMax: Int,
-    val exceso: Int
+    val humedadMinima: Int,
+    val humedadBuena: Int,
+    val humedadExceso: Int
 )
 
 @Entity(tableName = "sessions")

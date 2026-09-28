@@ -26,10 +26,10 @@ class Repository(private val context: Context) {
         try {
             if (plantDao.getCount() == 0) {
                 val defaults = listOf(
-                    PlantEntity(name = "Tomate", inicioRiego = 50, finRiego = 65, recomendadaMax = 75, exceso = 85),
-                    PlantEntity(name = "Geranio", inicioRiego = 40, finRiego = 60, recomendadaMax = 70, exceso = 80),
-                    PlantEntity(name = "Rosa", inicioRiego = 45, finRiego = 60, recomendadaMax = 75, exceso = 85),
-                    PlantEntity(name = "Helecho", inicioRiego = 60, finRiego = 80, recomendadaMax = 90, exceso = 95)
+                    PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80),
+                    PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70),
+                    PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75),
+                    PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90)
                 )
                 plantDao.insertPlants(defaults)
             }

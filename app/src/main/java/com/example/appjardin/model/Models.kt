@@ -1,16 +1,20 @@
 package com.example.appjardin.model
 
 data class Telemetry(
-    val humedad: Float,
-    val bomba: Boolean,
-    val conectado: Boolean
+    val humedad: Float = 0f,
+    val bomba: Boolean = false,
+    val conectado: Boolean = true,
+    val exceso: Boolean = false
 )
 
 data class Config(
-    val inicioRiego: Int,
-    val finRiego: Int,
-    val recomendadaMax: Int,
-    val exceso: Int
+    val humedadMinima: Int,
+    val humedadBuena: Int,
+    val humedadExceso: Int
+)
+
+data class ActionCommand(
+    val accion: String
 )
 
 enum class MoistureState {
