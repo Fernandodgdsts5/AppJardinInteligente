@@ -17,6 +17,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(FlowPreview::class)
@@ -51,6 +52,10 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     private val _pumpOn = MutableStateFlow(false)
     val pumpOn: StateFlow<Boolean> = _pumpOn
 
+    private var isRecordingSession = false
+    private var waitingForFirstTelemetry = false
+    private var lastKnownHumidity: Float = 0f
+
     init {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.insertDefaultPlantsIfEmpty()
@@ -75,32 +80,41 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
 
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             connectionState.collect { state ->
+                val plant = _selectedPlant.value
                 if (state == BluetoothProfile.STATE_CONNECTED) {
-                    _selectedPlant.value?.let { plant ->
-                        val config = Config(plant.humedadMinima, plant.humedadBuena, plant.humedadExceso)
+                    _pumpOn.value = false // Reset optimistic state on fresh connection
+                    plant?.let {
+                        val config = Config(it.humedadMinima, it.humedadBuena, it.humedadExceso)
                         delay(1000L)
                         bleManager.writeConfig(config)
+                        waitingForFirstTelemetry = true
+                    }
+                } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                    _pumpOn.value = false // Reset optimistic state on disconnect
+                    if (isRecordingSession) {
+                        repository.recordSessionEnd(lastKnownHumidity)
+                        isRecordingSession = false
+                        waitingForFirstTelemetry = false
                     }
                 }
             }
         }
         
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            telemetry
-                .filterNotNull()
-                .debounce(5.seconds)
-                .collect { tele ->
-                    val plant = _selectedPlant.value
-                    if (plant != null) {
-                        repository.addOrUpdateSession(plant.id, plant.name, tele.humedad)
-                    }
-                }
-        }
-
-        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             telemetry.filterNotNull().collect { tele ->
+                val prevOptimistic = _pumpOn.value
                 _pumpOn.value = tele.bomba
-                Log.d("JardinBLE", "Telemetría recibida -> bomba=${tele.bomba}")
+                lastKnownHumidity = tele.humedad
+                
+                // Add Log to verify optimistic vs real state
+                Log.d("JardinBLE", "bomba optimista=$prevOptimistic vs bomba real telemetría=${tele.bomba}, humedad=${tele.humedad}")
+                
+                val plant = _selectedPlant.value
+                if (plant != null && waitingForFirstTelemetry) {
+                    repository.recordSessionStart(plant.id, plant.name, tele.humedad)
+                    waitingForFirstTelemetry = false
+                    isRecordingSession = true
+                }
             }
         }
     }
@@ -160,6 +174,11 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
 
     override fun onCleared() {
         super.onCleared()
+        if (isRecordingSession) {
+            runBlocking(Dispatchers.IO) {
+                repository.recordSessionEnd(lastKnownHumidity)
+            }
+        }
         bleManager.closeGatt()
     }
 }

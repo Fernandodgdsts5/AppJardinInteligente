@@ -27,7 +27,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
     val userName by viewModel.userName.collectAsStateWithLifecycle()
     val plants by viewModel.allPlants.collectAsStateWithLifecycle()
     val selectedPlant by viewModel.selectedPlant.collectAsStateWithLifecycle()
-    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
+    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
 
     val humidity = telemetry?.humedad ?: 0f
     val state = viewModel.getMoistureState(humidity, selectedPlant)

@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
+import kotlinx.coroutines.flow.first
+
 class Repository(private val context: Context) {
     private val database = AppDatabase.getDatabase(context)
     private val plantDao = database.plantDao()
@@ -71,43 +73,23 @@ class Repository(private val context: Context) {
         }
     }
     
-    suspend fun addOrUpdateSession(plantId: Int, plantName: String, humidity: Float) = withContext(Dispatchers.IO) {
+    suspend fun recordSessionStart(plantId: Int, plantName: String, humidity: Float) = withContext(Dispatchers.IO) {
         try {
-            val lastSession = sessionDao.getLastSession()
+            val lastDisconnectTime = settingsDataStore.lastDisconnectTimeFlow.first()
             val currentTime = System.currentTimeMillis()
+            val timeSinceLastDisconnect = currentTime - lastDisconnectTime
             
-            if (lastSession != null && (currentTime - lastSession.endTimeMs) < 3600000L) {
-                // Check if continuous session exceeds 5 hours
-                if ((currentTime - lastSession.startTimeMs) > 5 * 3600000L) {
-                    // Too long, create a new session
-                    val newSession = SessionEntity(
-                        plantId = plantId,
-                        plantName = plantName,
-                        startTimeMs = currentTime,
-                        endTimeMs = currentTime,
-                        humidities = "$humidity"
-                    )
-                    sessionDao.insertSession(newSession)
-                } else {
-                    // Update existing
-                    // To avoid endless string growth, we only keep the first few, or we update min/max,
-                    // but since the schema is string, let's keep it simple: we don't append if it's too long,
-                    // or we just update the endTimeMs without appending everything.
-                    // Better approach: just store average or append if time difference > 5 minutes.
-                    val lastRecordTime = lastSession.endTimeMs
-                    val shouldAppendData = (currentTime - lastRecordTime) > 5 * 60000L // every 5 mins
-                    
-                    val newHumidities = if (shouldAppendData) {
-                        "${lastSession.humidities},$humidity"
-                    } else {
-                        lastSession.humidities
-                    }
-                    
-                    val updated = lastSession.copy(endTimeMs = currentTime, humidities = newHumidities)
-                    sessionDao.updateSession(updated)
-                }
+            Log.d("Repository", "Evaluando sesión: tiempoActual=$currentTime, ultimaDesconexion=$lastDisconnectTime, diff=$timeSinceLastDisconnect ms")
+            
+            val lastSession = sessionDao.getLastSession()
+            
+            // Check if last disconnect was within 1 hour AND the last session belongs to the same plant
+            if (lastSession != null && lastDisconnectTime > 0L && timeSinceLastDisconnect <= 3600000L && lastSession.plantId == plantId) {
+                val newHumidities = "${lastSession.humidities},$humidity"
+                val updated = lastSession.copy(endTimeMs = currentTime, humidities = newHumidities)
+                sessionDao.updateSession(updated)
+                Log.d("Repository", "-> Continuar sesión anterior: UPDATE sobre ID=${updated.id}")
             } else {
-                // Create new
                 val newSession = SessionEntity(
                     plantId = plantId,
                     plantName = plantName,
@@ -116,9 +98,28 @@ class Repository(private val context: Context) {
                     humidities = "$humidity"
                 )
                 sessionDao.insertSession(newSession)
+                Log.d("Repository", "-> Nueva sesión: CREAR nuevo registro para $plantName (Pasó más de 1 hora o planta distinta)")
             }
         } catch (e: Exception) {
-            Log.e("Repository", "Error adding/updating session", e)
+            Log.e("Repository", "Error starting session", e)
+        }
+    }
+
+    suspend fun recordSessionEnd(humidity: Float) = withContext(Dispatchers.IO) {
+        try {
+            Log.d("Repository", "END RECORDING: humidity=$humidity")
+            val currentTime = System.currentTimeMillis()
+            settingsDataStore.saveLastDisconnectTime(currentTime) // Save exact disconnect time
+            
+            val lastSession = sessionDao.getLastSession()
+            if (lastSession != null) {
+                val newHumidities = "${lastSession.humidities},$humidity"
+                val updated = lastSession.copy(endTimeMs = currentTime, humidities = newHumidities)
+                sessionDao.updateSession(updated)
+                Log.d("Repository", "Completed existing session: ${updated.id}, disconnect time saved.")
+            }
+        } catch (e: Exception) {
+            Log.e("Repository", "Error ending session", e)
         }
     }
 }

@@ -28,7 +28,7 @@ fun MainScreen(
     viewModel: GardenViewModel,
     onNavigateToSettings: () -> Unit = {}
 ) {
-    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
+    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
     
     val humidity = telemetry?.humedad ?: 0f

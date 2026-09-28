@@ -25,7 +25,7 @@ import java.util.*
 @Composable
 fun HistoryScreen(viewModel: GardenViewModel) {
     val sessions by viewModel.allSessions.collectAsStateWithLifecycle()
-    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
+    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
 
     val humidity = telemetry?.humedad ?: 0f
@@ -86,54 +86,73 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                     items = sessions,
                     key = { session -> session.id }
                 ) { session ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = session.plantName,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkText
-                                )
-                                Surface(
-                                    color = activeColor.copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "Sesión #${session.id}",
-                                        color = activeColor,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Inicio: ${formatDate(session.startTimeMs)}", fontSize = 14.sp, color = DarkText)
-                            Text("Fin: ${formatDate(session.endTimeMs)}", fontSize = 14.sp, color = DarkText)
-
-                            val hums = session.humidities.split(",")
-                            val avg = if (hums.isNotEmpty()) hums.mapNotNull { it.toFloatOrNull() }.average() else 0.0
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Humedad Promedio: ${String.format(Locale.getDefault(), "%.1f", avg)}%",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = activeColor
-                            )
-                        }
-                    }
+                    SessionHistoryItem(
+                        sessionId = session.id,
+                        plantName = session.plantName,
+                        startTimeMs = session.startTimeMs,
+                        endTimeMs = session.endTimeMs,
+                        humidities = session.humidities,
+                        activeColor = activeColor
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SessionHistoryItem(
+    sessionId: Int,
+    plantName: String,
+    startTimeMs: Long,
+    endTimeMs: Long,
+    humidities: String,
+    activeColor: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = plantName,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkText
+                )
+                Surface(
+                    color = activeColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Sesión #$sessionId",
+                        color = activeColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Inicio: ${formatDate(startTimeMs)}", fontSize = 14.sp, color = DarkText)
+            Text("Fin: ${formatDate(endTimeMs)}", fontSize = 14.sp, color = DarkText)
+
+            val hums = humidities.split(",")
+            val avg = if (hums.isNotEmpty()) hums.mapNotNull { it.toFloatOrNull() }.average() else 0.0
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Humedad Promedio: ${String.format(Locale.getDefault(), "%.1f", avg)}%",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = activeColor
+            )
         }
     }
 }

@@ -16,8 +16,12 @@ import com.example.appjardin.model.Telemetry
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -35,8 +39,11 @@ class BleManager(private val context: Context) {
     private val _discoveredDevices = MutableStateFlow<List<BluetoothDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<BluetoothDevice>> = _discoveredDevices
 
-    private val _telemetry = MutableStateFlow<Telemetry?>(null)
-    val telemetry: StateFlow<Telemetry?> = _telemetry
+    private val _telemetry = MutableSharedFlow<Telemetry?>(
+        replay = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val telemetry: SharedFlow<Telemetry?> = _telemetry.asSharedFlow()
 
     private val _connectionState = MutableStateFlow(BluetoothProfile.STATE_DISCONNECTED)
     val connectionState: StateFlow<Int> = _connectionState
@@ -199,10 +206,12 @@ class BleManager(private val context: Context) {
             try {
                 val data = Gson().fromJson(json, Telemetry::class.java)
                 if (data != null) {
-                    _telemetry.value = data
+                    _telemetry.tryEmit(data)
                 }
             } catch (e: Exception) {
-                Log.e("BleManager", "Error parsing telemetry JSON safely discarded: $json", e)
+                if (com.example.appjardin.BuildConfig.DEBUG) {
+                    Log.e("BleManager", "Error parsing telemetry JSON safely discarded: $json", e)
+                }
             }
         }
     }

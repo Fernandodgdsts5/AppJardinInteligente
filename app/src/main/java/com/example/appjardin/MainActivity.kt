@@ -2,6 +2,7 @@ package com.example.appjardin
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothProfile
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -18,7 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -125,7 +126,14 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("main_app") {
-                            MainAppContent(viewModel = viewModel)
+                            MainAppContent(
+                                viewModel = viewModel,
+                                onNavigateToScan = {
+                                    rootNavController.navigate("scan") {
+                                        popUpTo("main_app") { inclusive = true }
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -140,10 +148,51 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainAppContent(viewModel: GardenViewModel) {
+fun MainAppContent(
+    viewModel: GardenViewModel,
+    onNavigateToScan: () -> Unit
+) {
     val bottomNavController = rememberNavController()
-    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle()
+    val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
+    val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+
+    var showDisconnectDialog by remember { mutableStateOf(false) }
+    var wasConnected by remember { mutableStateOf(false) }
+
+    LaunchedEffect(connectionState) {
+        if (connectionState == BluetoothProfile.STATE_CONNECTED) {
+            wasConnected = true
+        } else if (connectionState == BluetoothProfile.STATE_DISCONNECTED) {
+            if (wasConnected) {
+                showDisconnectDialog = true
+                wasConnected = false
+            }
+        }
+    }
+
+    if (showDisconnectDialog) {
+        AlertDialog(
+            onDismissRequest = { /* No hacer nada para forzar elección */ },
+            title = { Text("Conexión perdida") },
+            text = { Text("Se ha perdido la conexión con el jardín inteligente (puede haberse reiniciado, apagado o alejado del rango).") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDisconnectDialog = false
+                    onNavigateToScan()
+                }) {
+                    Text("Conectar Jardín Inteligente")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDisconnectDialog = false
+                }) {
+                    Text("Quedarme")
+                }
+            }
+        )
+    }
 
     val humidity = telemetry?.humedad ?: 0f
     val state = viewModel.getMoistureState(humidity, plant)
@@ -196,7 +245,7 @@ fun MainAppContent(viewModel: GardenViewModel) {
                 NavigationBarItem(
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.List,
+                            imageVector = Icons.AutoMirrored.Filled.List,
                             contentDescription = "Historial"
                         )
                     },
