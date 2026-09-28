@@ -73,7 +73,7 @@ class Repository(private val context: Context) {
         }
     }
     
-    suspend fun recordSessionStart(plantId: Int, plantName: String, humidity: Float) = withContext(Dispatchers.IO) {
+    suspend fun recordSessionStart(plantId: Int, plantName: String, humidity: Float, minHumidity: Float, maxHumidity: Float) = withContext(Dispatchers.IO) {
         try {
             val lastDisconnectTime = settingsDataStore.lastDisconnectTimeFlow.first()
             val currentTime = System.currentTimeMillis()
@@ -86,7 +86,12 @@ class Repository(private val context: Context) {
             // Check if last disconnect was within 1 hour AND the last session belongs to the same plant
             if (lastSession != null && lastDisconnectTime > 0L && timeSinceLastDisconnect <= 3600000L && lastSession.plantId == plantId) {
                 val newHumidities = "${lastSession.humidities},$humidity"
-                val updated = lastSession.copy(endTimeMs = currentTime, humidities = newHumidities)
+                val updated = lastSession.copy(
+                    endTimeMs = currentTime, 
+                    humidities = newHumidities,
+                    humedadMasBaja = minOf(lastSession.humedadMasBaja, minHumidity),
+                    humedadMasAlta = maxOf(lastSession.humedadMasAlta, maxHumidity)
+                )
                 sessionDao.updateSession(updated)
                 Log.d("Repository", "-> Continuar sesión anterior: UPDATE sobre ID=${updated.id}")
             } else {
@@ -95,7 +100,9 @@ class Repository(private val context: Context) {
                     plantName = plantName,
                     startTimeMs = currentTime,
                     endTimeMs = currentTime,
-                    humidities = "$humidity"
+                    humidities = "$humidity",
+                    humedadMasBaja = minHumidity,
+                    humedadMasAlta = maxHumidity
                 )
                 sessionDao.insertSession(newSession)
                 Log.d("Repository", "-> Nueva sesión: CREAR nuevo registro para $plantName (Pasó más de 1 hora o planta distinta)")
@@ -105,7 +112,7 @@ class Repository(private val context: Context) {
         }
     }
 
-    suspend fun recordSessionEnd(humidity: Float) = withContext(Dispatchers.IO) {
+    suspend fun recordSessionEnd(humidity: Float, minHumidity: Float, maxHumidity: Float) = withContext(Dispatchers.IO) {
         try {
             Log.d("Repository", "END RECORDING: humidity=$humidity")
             val currentTime = System.currentTimeMillis()
@@ -114,7 +121,12 @@ class Repository(private val context: Context) {
             val lastSession = sessionDao.getLastSession()
             if (lastSession != null) {
                 val newHumidities = "${lastSession.humidities},$humidity"
-                val updated = lastSession.copy(endTimeMs = currentTime, humidities = newHumidities)
+                val updated = lastSession.copy(
+                    endTimeMs = currentTime, 
+                    humidities = newHumidities,
+                    humedadMasBaja = minOf(lastSession.humedadMasBaja, minHumidity),
+                    humedadMasAlta = maxOf(lastSession.humedadMasAlta, maxHumidity)
+                )
                 sessionDao.updateSession(updated)
                 Log.d("Repository", "Completed existing session: ${updated.id}, disconnect time saved.")
             }

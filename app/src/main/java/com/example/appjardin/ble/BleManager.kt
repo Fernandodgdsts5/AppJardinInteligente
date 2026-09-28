@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.example.appjardin.BuildConfig
 import com.example.appjardin.model.ActionCommand
 import com.example.appjardin.model.Config
 import com.example.appjardin.model.Telemetry
@@ -200,18 +201,17 @@ class BleManager(private val context: Context) {
         
         // Remove trailing null-terminators (\u0000) or weird characters sometimes appended by C++ over BLE
         val json = rawJson.trim().trimEnd('\u0000')
-        Log.d("BleManager", "Raw telemetry received: '$json'")
+        val timestamp = System.currentTimeMillis()
+        Log.d("BleManager", "[$timestamp] Raw telemetry received: '$json'")
         
-        bleScope.launch {
-            try {
-                val data = Gson().fromJson(json, Telemetry::class.java)
-                if (data != null) {
-                    _telemetry.tryEmit(data)
-                }
-            } catch (e: Exception) {
-                if (com.example.appjardin.BuildConfig.DEBUG) {
-                    Log.e("BleManager", "Error parsing telemetry JSON safely discarded: $json", e)
-                }
+        try {
+            val data = Gson().fromJson(json, Telemetry::class.java)
+            if (data != null) {
+                _telemetry.tryEmit(data)
+            }
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e("BleManager", "Error parsing telemetry JSON safely discarded: $json", e)
             }
         }
     }

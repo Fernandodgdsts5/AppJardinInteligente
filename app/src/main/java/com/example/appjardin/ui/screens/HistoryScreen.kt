@@ -92,6 +92,8 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                         startTimeMs = session.startTimeMs,
                         endTimeMs = session.endTimeMs,
                         humidities = session.humidities,
+                        humedadMasBaja = session.humedadMasBaja,
+                        humedadMasAlta = session.humedadMasAlta,
                         activeColor = activeColor
                     )
                 }
@@ -107,6 +109,8 @@ fun SessionHistoryItem(
     startTimeMs: Long,
     endTimeMs: Long,
     humidities: String,
+    humedadMasBaja: Float,
+    humedadMasAlta: Float,
     activeColor: Color
 ) {
     Card(
@@ -145,8 +149,26 @@ fun SessionHistoryItem(
             Text("Fin: ${formatDate(endTimeMs)}", fontSize = 14.sp, color = DarkText)
 
             val hums = humidities.split(",")
+            val inicial = hums.firstOrNull()?.toFloatOrNull() ?: 0f
+            val final = hums.lastOrNull()?.toFloatOrNull() ?: 0f
             val avg = if (hums.isNotEmpty()) hums.mapNotNull { it.toFloatOrNull() }.average() else 0.0
-            Spacer(modifier = Modifier.height(4.dp))
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Inicial: ${String.format(Locale.getDefault(), "%.1f", inicial)}%", fontSize = 13.sp, color = Color.Gray)
+                    Text("Final: ${String.format(Locale.getDefault(), "%.1f", final)}%", fontSize = 13.sp, color = Color.Gray)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Mínima: ${String.format(Locale.getDefault(), "%.1f", humedadMasBaja)}%", fontSize = 13.sp, color = Color.Gray)
+                    Text("Máxima: ${String.format(Locale.getDefault(), "%.1f", humedadMasAlta)}%", fontSize = 13.sp, color = Color.Gray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Humedad Promedio: ${String.format(Locale.getDefault(), "%.1f", avg)}%",
                 fontSize = 14.sp,

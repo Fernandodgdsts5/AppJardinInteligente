@@ -134,11 +134,11 @@ fun MainScreen(
                 plant == null -> {
                     Triple("ELEGIR PLANTA", true) { onNavigateToSettings() }
                 }
-                pumpOn -> {
-                    Triple("DETENER RIEGO", true) { viewModel.togglePump(false) }
-                }
                 isExcess -> {
                     Triple("EXCESO DE HUMEDAD", false) {}
+                }
+                pumpOn -> {
+                    Triple("DETENER RIEGO", true) { viewModel.togglePump(false) }
                 }
                 else -> {
                     Triple("REGAR", true) { viewModel.togglePump(true) }

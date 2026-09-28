@@ -19,5 +19,7 @@ data class SessionEntity(
     val plantName: String,
     val startTimeMs: Long,
     val endTimeMs: Long,
-    val humidities: String // Comma separated values or JSON
+    val humidities: String, // Comma separated values or JSON
+    val humedadMasBaja: Float = 0f,
+    val humedadMasAlta: Float = 100f
 )
