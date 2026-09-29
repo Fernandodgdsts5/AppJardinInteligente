@@ -108,7 +108,7 @@ fun MainScreen(
 
             // Plant Image Resource
             Image(
-                painter = painterResource(id = R.drawable.planta),
+                painter = painterResource(id = R.drawable.logov1),
                 contentDescription = "Planta en maceta",
                 modifier = Modifier.size(130.dp),
                 contentScale = ContentScale.Fit
