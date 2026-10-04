@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.res.painterResource
@@ -66,6 +67,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+
+private val PET_CARD_HEIGHT = 180.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -313,23 +316,22 @@ fun SettingsScreen(viewModel: GardenViewModel) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(90.dp)
+                    .height(PET_CARD_HEIGHT)
                     .clickable { isPetExpanded = !isPetExpanded },
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(end = 8.dp),
+                            .fillMaxHeight()
+                            .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
@@ -338,26 +340,30 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                             color = Color.Gray,
                             fontWeight = FontWeight.Medium
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = selectedPetName,
-                            fontSize = 18.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkText
+                            color = DarkText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight(0.9f)
+                            .fillMaxHeight()
                             .aspectRatio(1f)
+                            .background(activeColor.copy(alpha = 0.08f)),
+                        contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(id = selectedPet.getDrawable(PetMood.FELIZ)),
                             contentDescription = selectedPet.speciesName,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(8.dp)),
+                                .padding(8.dp),
                             contentScale = ContentScale.Fit
                         )
                     }
