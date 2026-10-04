@@ -9,9 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -31,9 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -83,46 +80,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
     var isEditingName by remember { mutableStateOf(false) }
     var tempNameInput by remember(userName) { mutableStateOf(userName) }
     var showAddDialog by remember { mutableStateOf(false) }
-
-    // Image change flow states
-    var plantToEditImageId by remember { mutableStateOf<Int?>(null) }
-    var showImageSourceSheet by remember { mutableStateOf(false) }
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
-    var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
-    var showPreviewDialog by remember { mutableStateOf(false) }
-
-    // Camera launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && tempCameraUri != null) {
-            pendingImageUri = tempCameraUri
-            showPreviewDialog = true
-        }
-    }
-
-    // Gallery launcher
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            pendingImageUri = uri
-            showPreviewDialog = true
-        }
-    }
-
-    // Camera permission launcher
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            val uri = createImageUri(context)
-            tempCameraUri = uri
-            cameraLauncher.launch(uri)
-        } else {
-            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-        }
-    }
+    var plantToEdit by remember { mutableStateOf<PlantEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -195,7 +153,14 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = activeColor,
                                     focusedLabelColor = activeColor
-                                )
+                                ),
+                                trailingIcon = {
+                                    if (tempNameInput.isNotBlank()) {
+                                        IconButton(onClick = { tempNameInput = "" }) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                        }
+                                    }
+                                }
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -237,10 +202,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                         isSelected = isSelected,
                         activeColor = activeColor,
                         onCardClick = { viewModel.selectPlant(plant.id) },
-                        onEditImageClick = {
-                            plantToEditImageId = plant.id
-                            showImageSourceSheet = true
-                        }
+                        onEditClick = { plantToEdit = plant }
                     )
                 }
             }
@@ -265,10 +227,12 @@ fun SettingsScreen(viewModel: GardenViewModel) {
 
         // Add Plant Dialog
         if (showAddDialog) {
-            AddPlantDialog(
+            PlantFormDialog(
+                plantToEdit = null,
                 onDismiss = { showAddDialog = false },
-                onAdd = { newPlant ->
-                    viewModel.addPlant(newPlant)
+                onSave = { newPlant, imagePath ->
+                    val plantToSave = newPlant.copy(imagePath = imagePath)
+                    viewModel.addPlant(plantToSave)
                     showAddDialog = false
                 },
                 activeColor = activeColor,
@@ -277,155 +241,18 @@ fun SettingsScreen(viewModel: GardenViewModel) {
             )
         }
 
-        // Image Source Bottom Sheet
-        if (showImageSourceSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showImageSourceSheet = false },
-                containerColor = Color.White
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Actualizar imagen de planta",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkText
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                showImageSourceSheet = false
-                                val permission = Manifest.permission.CAMERA
-                                if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                                    val uri = createImageUri(context)
-                                    tempCameraUri = uri
-                                    cameraLauncher.launch(uri)
-                                } else {
-                                    cameraPermissionLauncher.launch(permission)
-                                }
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = activeColor)
-                        Text("Tomar foto", fontSize = 16.sp, color = DarkText, fontWeight = FontWeight.Medium)
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                showImageSourceSheet = false
-                                galleryLauncher.launch(
-                                    PickVisualMediaRequest(
-                                        ActivityResultContracts.PickVisualMedia.ImageOnly
-                                    )
-                                )
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = activeColor)
-                        Text("Elegir de la galería", fontSize = 16.sp, color = DarkText, fontWeight = FontWeight.Medium)
-                    }
-
-                    val targetPlant = plants.find { it.id == plantToEditImageId }
-                    if (targetPlant?.defaultKey != null && !targetPlant.imagePath.isNullOrBlank()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    showImageSourceSheet = false
-                                    plantToEditImageId?.let { id ->
-                                        scope.launch {
-                                            // Delete old file
-                                            PlantImageStorage.deleteImageFile(targetPlant.imagePath)
-                                            viewModel.updatePlantImage(id, null)
-                                        }
-                                    }
-                                }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color.Gray)
-                            Text("Restaurar imagen original", fontSize = 16.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-        }
-
-        // Preview & Confirmation Dialog
-        if (showPreviewDialog && pendingImageUri != null) {
-            AlertDialog(
-                onDismissRequest = {
-                    showPreviewDialog = false
-                    pendingImageUri = null
+        // Edit Plant Dialog
+        if (plantToEdit != null) {
+            PlantFormDialog(
+                plantToEdit = plantToEdit,
+                onDismiss = { plantToEdit = null },
+                onSave = { updatedPlant, newImagePath ->
+                    viewModel.updatePlant(updatedPlant, newImagePath)
+                    plantToEdit = null
                 },
-                title = { Text("Vista previa", fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        AsyncImage(
-                            model = pendingImageUri,
-                            contentDescription = "Vista previa",
-                            modifier = Modifier
-                                .size(200.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                        Text("¿Deseas usar esta foto?", fontSize = 14.sp, color = DarkText)
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            val uri = pendingImageUri
-                            val plantId = plantToEditImageId
-                            showPreviewDialog = false
-                            pendingImageUri = null
-
-                            if (uri != null && plantId != null) {
-                                scope.launch(Dispatchers.IO) {
-                                    val internalPath = PlantImageStorage.saveImageToInternalStorage(context, uri)
-                                    withContext(Dispatchers.Main) {
-                                        if (internalPath != null) {
-                                            viewModel.updatePlantImage(plantId, internalPath)
-                                        } else {
-                                            Toast.makeText(context, "Error al procesar la imagen", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = activeColor)
-                    ) {
-                        Text("Usar esta foto", color = Color.White)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        showPreviewDialog = false
-                        // Retry -> reopen source sheet
-                        showImageSourceSheet = true
-                    }) {
-                        Text("Volver a intentar", color = Color.Gray)
-                    }
-                }
+                activeColor = activeColor,
+                context = context,
+                scope = scope
             )
         }
     }
@@ -437,7 +264,7 @@ fun PlantSelectionCard(
     isSelected: Boolean,
     activeColor: Color,
     onCardClick: () -> Unit,
-    onEditImageClick: () -> Unit
+    onEditClick: () -> Unit
 ) {
     val defaultRes = PlantImageStorage.getDefaultDrawableRes(plant.defaultKey)
     val imageModel = when {
@@ -518,7 +345,7 @@ fun PlantSelectionCard(
                     modifier = Modifier
                         .size(48.dp)
                         .align(Alignment.TopEnd)
-                        .clickable { onEditImageClick() },
+                        .clickable { onEditClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -529,7 +356,7 @@ fun PlantSelectionCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar imagen",
+                            contentDescription = "Editar planta",
                             tint = Color.White,
                             modifier = Modifier.size(14.dp)
                         )
@@ -542,27 +369,32 @@ fun PlantSelectionCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPlantDialog(
+fun PlantFormDialog(
+    plantToEdit: PlantEntity? = null,
     onDismiss: () -> Unit,
-    onAdd: (PlantEntity) -> Unit,
+    onSave: (PlantEntity, String?) -> Unit,
     activeColor: Color,
     context: Context,
     scope: CoroutineScope
 ) {
-    var name by remember { mutableStateOf("") }
-    var minStr by remember { mutableStateOf("") }
-    var buenaStr by remember { mutableStateOf("") }
-    var excesoStr by remember { mutableStateOf("") }
+    val isEditing = plantToEdit != null
+    var name by remember { mutableStateOf(plantToEdit?.name ?: "") }
+    var minStr by remember { mutableStateOf(plantToEdit?.humedadMinima?.toString() ?: "") }
+    var buenaStr by remember { mutableStateOf(plantToEdit?.humedadBuena?.toString() ?: "") }
+    var excesoStr by remember { mutableStateOf(plantToEdit?.humedadExceso?.toString() ?: "") }
     var errorMsg by remember { mutableStateOf("") }
-    var customImagePath by remember { mutableStateOf<String?>(null) }
+    
+    // Image state: if editing, start with current plant imagePath; else null
+    var currentImagePath by remember { mutableStateOf(plantToEdit?.imagePath) }
+    
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var showPreview by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
-    var tempUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && tempUri != null) {
-            pendingUri = tempUri
+        if (success && tempCameraUri != null) {
+            pendingUri = tempCameraUri
             showPreview = true
         }
     }
@@ -574,19 +406,19 @@ fun AddPlantDialog(
         }
     }
 
-    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
             val u = createImageUri(context)
-            tempUri = u
+            tempCameraUri = u
             cameraLauncher.launch(u)
         } else {
-            Toast.makeText(context, "Permiso denegado", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
         }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nueva Planta Personalizada", fontWeight = FontWeight.Bold) },
+        title = { Text(if (isEditing) "Editar Planta" else "Nueva Planta Personalizada", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -604,19 +436,28 @@ fun AddPlantDialog(
                         .clickable { showSheet = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (customImagePath != null) {
-                        AsyncImage(
-                            model = File(customImagePath!!),
-                            contentDescription = "Imagen seleccionada",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Color.Gray)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Agregar imagen", fontSize = 11.sp, color = Color.Gray)
-                        }
+                    val defaultRes = plantToEdit?.let { PlantImageStorage.getDefaultDrawableRes(it.defaultKey) }
+                    val displayModel = when {
+                        !currentImagePath.isNullOrBlank() -> File(currentImagePath!!)
+                        defaultRes != null -> defaultRes
+                        else -> R.drawable.planta
+                    }
+
+                    AsyncImage(
+                        model = displayModel,
+                        contentDescription = "Imagen de planta",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // Edit overlay icon
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Cambiar", tint = Color.White)
                     }
                 }
 
@@ -626,28 +467,56 @@ fun AddPlantDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Nombre de la Planta") },
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        if (name.isNotBlank()) {
+                            IconButton(onClick = { name = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                            }
+                        }
+                    }
                 )
                 OutlinedTextField(
                     value = minStr,
                     onValueChange = { minStr = it },
                     label = { Text("Humedad Mínima (%)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        if (minStr.isNotBlank()) {
+                            IconButton(onClick = { minStr = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                            }
+                        }
+                    }
                 )
                 OutlinedTextField(
                     value = buenaStr,
                     onValueChange = { buenaStr = it },
                     label = { Text("Humedad Buena (%)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        if (buenaStr.isNotBlank()) {
+                            IconButton(onClick = { buenaStr = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                            }
+                        }
+                    }
                 )
                 OutlinedTextField(
                     value = excesoStr,
                     onValueChange = { excesoStr = it },
                     label = { Text("Humedad Exceso (%)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        if (excesoStr.isNotBlank()) {
+                            IconButton(onClick = { excesoStr = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                            }
+                        }
+                    }
                 )
 
                 if (errorMsg.isNotEmpty()) {
@@ -674,16 +543,23 @@ fun AddPlantDialog(
                     } else if (!(min < buena && buena < exceso)) {
                         errorMsg = "Regla requerida: Min < Buena < Exceso"
                     } else {
-                        onAdd(
+                        val plantResult = if (isEditing) {
+                            plantToEdit.copy(
+                                name = name.trim(),
+                                humedadMinima = min,
+                                humedadBuena = buena,
+                                humedadExceso = exceso
+                            )
+                        } else {
                             PlantEntity(
-                                name = name,
+                                name = name.trim(),
                                 humedadMinima = min,
                                 humedadBuena = buena,
                                 humedadExceso = exceso,
-                                imagePath = customImagePath,
                                 defaultKey = null
                             )
-                        )
+                        }
+                        onSave(plantResult, currentImagePath)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = activeColor)
@@ -699,7 +575,6 @@ fun AddPlantDialog(
     )
 
     if (showSheet) {
-        ExperimentalMaterial3Api::class
         ModalBottomSheet(
             onDismissRequest = { showSheet = false },
             containerColor = Color.White
@@ -711,6 +586,7 @@ fun AddPlantDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text("Imagen de planta", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkText)
+                
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -719,10 +595,10 @@ fun AddPlantDialog(
                             val perm = Manifest.permission.CAMERA
                             if (ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED) {
                                 val u = createImageUri(context)
-                                tempUri = u
+                                tempCameraUri = u
                                 cameraLauncher.launch(u)
                             } else {
-                                permLauncher.launch(perm)
+                                cameraPermissionLauncher.launch(perm)
                             }
                         }
                         .padding(vertical = 12.dp),
@@ -732,6 +608,7 @@ fun AddPlantDialog(
                     Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = activeColor)
                     Text("Tomar foto", fontSize = 16.sp, color = DarkText)
                 }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -746,6 +623,24 @@ fun AddPlantDialog(
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = activeColor)
                     Text("Elegir de la galería", fontSize = 16.sp, color = DarkText)
                 }
+
+                if (!currentImagePath.isNullOrBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showSheet = false
+                                currentImagePath = null
+                            }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Clear, contentDescription = null, tint = Color.Gray)
+                        Text("Quitar foto personalizada", fontSize = 16.sp, color = Color.Gray)
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -785,7 +680,7 @@ fun AddPlantDialog(
                                 val path = PlantImageStorage.saveImageToInternalStorage(context, u)
                                 withContext(Dispatchers.Main) {
                                     if (path != null) {
-                                        customImagePath = path
+                                        currentImagePath = path
                                     } else {
                                         Toast.makeText(context, "Error al guardar imagen", Toast.LENGTH_SHORT).show()
                                     }

@@ -149,9 +149,9 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updatePlantImage(plantId: Int, imagePath: String?) {
+    fun updatePlant(plant: PlantEntity, newImagePath: String?) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            repository.updatePlantImagePath(plantId, imagePath)
+            repository.updatePlant(plant, newImagePath)
         }
     }
 

@@ -58,18 +58,25 @@ class Repository(private val context: Context) {
         }
     }
 
-    suspend fun updatePlantImagePath(plantId: Int, imagePath: String?) = withContext(Dispatchers.IO) {
+    suspend fun updatePlant(plant: PlantEntity, newImagePath: String?) = withContext(Dispatchers.IO) {
         try {
-            val plant = plantDao.getPlantById(plantId)
-            if (plant != null) {
-                if (!plant.imagePath.isNullOrBlank() && plant.imagePath != imagePath) {
-                    PlantImageStorage.deleteImageFile(plant.imagePath)
+            val existing = plantDao.getPlantById(plant.id)
+            if (existing != null) {
+                if (!existing.imagePath.isNullOrBlank() && existing.imagePath != newImagePath) {
+                    PlantImageStorage.deleteImageFile(existing.imagePath)
                 }
-                val updated = plant.copy(imagePath = imagePath)
+                val updated = plant.copy(
+                    name = plant.name,
+                    humedadMinima = plant.humedadMinima,
+                    humedadBuena = plant.humedadBuena,
+                    humedadExceso = plant.humedadExceso,
+                    imagePath = newImagePath
+                )
                 plantDao.updatePlant(updated)
+                Log.d("Repository", "Updated plant ID: ${plant.id}")
             }
         } catch (e: Exception) {
-            Log.e("Repository", "Error updating plant image", e)
+            Log.e("Repository", "Error updating plant", e)
         }
     }
 

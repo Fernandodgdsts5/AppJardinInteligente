@@ -30,11 +30,8 @@ object PlantImageStorage {
 
     suspend fun saveImageToInternalStorage(context: Context, sourceUri: Uri): String? = withContext(Dispatchers.IO) {
         try {
-            val inputStream: InputStream = context.contentResolver.openInputStream(sourceUri) ?: return@withContext null
-            val originalBitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream.close()
-
-            if (originalBitmap == null) return@withContext null
+            // Decode with sample size to prevent OOM / ANR on high-res photos
+            val originalBitmap = decodeSampledBitmapFromUri(context, sourceUri, 1024) ?: return@withContext null
 
             // Handle EXIF orientation if applicable
             val rotatedBitmap = handleExifOrientation(context, sourceUri, originalBitmap)
@@ -78,6 +75,41 @@ object PlantImageStorage {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    private fun decodeSampledBitmapFromUri(context: Context, uri: Uri, reqSize: Int): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream, null, options)
+            }
+
+            options.inSampleSize = calculateInSampleSize(options, reqSize, reqSize)
+            options.inJustDecodeBounds = false
+
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream, null, options)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height: Int, width: Int) = options.run { outHeight to outWidth }
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     private fun handleExifOrientation(context: Context, uri: Uri, bitmap: Bitmap): Bitmap {
