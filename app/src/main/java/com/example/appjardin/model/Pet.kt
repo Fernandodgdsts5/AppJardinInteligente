@@ -11,12 +11,27 @@ enum class Pet(
     val id: String,
     val speciesName: String,
     val defaultName: String,
+    val isLocked: Boolean,
     private val moodDrawables: Map<PetMood, Int>
 ) {
+    LARVA(
+        id = "larva",
+        speciesName = "Larva",
+        defaultName = "Tito",
+        isLocked = false,
+        moodDrawables = mapOf(
+            PetMood.ASUSTADO to R.drawable.pet_larva_asustado,
+            PetMood.ENOJADO to R.drawable.pet_larva_enojado,
+            PetMood.FELIZ to R.drawable.pet_larva_feliz,
+            PetMood.TRISTE to R.drawable.pet_larva_triste,
+            PetMood.NEUTRAL to R.drawable.pet_larva_neutral
+        )
+    ),
     GUSANO(
         id = "gusano",
         speciesName = "Gusano",
         defaultName = "Coco",
+        isLocked = false,
         moodDrawables = mapOf(
             PetMood.ASUSTADO to R.drawable.pet_gusano_asustado,
             PetMood.ENOJADO to R.drawable.pet_gusano_enojado,
@@ -25,34 +40,11 @@ enum class Pet(
             PetMood.NEUTRAL to R.drawable.pet_gusano_neutral
         )
     ),
-    ABEJA(
-        id = "abeja",
-        speciesName = "Abeja",
-        defaultName = "Miel",
-        moodDrawables = mapOf(
-            PetMood.ASUSTADO to R.drawable.pet_abeja_asustado,
-            PetMood.ENOJADO to R.drawable.pet_abeja_enojado,
-            PetMood.FELIZ to R.drawable.pet_abeja_feliz,
-            PetMood.TRISTE to R.drawable.pet_abeja_triste,
-            PetMood.NEUTRAL to R.drawable.pet_abeja_neutral
-        )
-    ),
-    CHANCHITO(
-        id = "chanchito",
-        speciesName = "Chanchito",
-        defaultName = "Troll",
-        moodDrawables = mapOf(
-            PetMood.ASUSTADO to R.drawable.pet_chanchito_asustado,
-            PetMood.ENOJADO to R.drawable.pet_chanchito_enojado,
-            PetMood.FELIZ to R.drawable.pet_chanchito_feliz,
-            PetMood.TRISTE to R.drawable.pet_chanchito_triste,
-            PetMood.NEUTRAL to R.drawable.pet_chanchito_neutral
-        )
-    ),
     HORMIGA(
         id = "hormiga",
         speciesName = "Hormiga",
         defaultName = "Luna",
+        isLocked = true,
         moodDrawables = mapOf(
             PetMood.ASUSTADO to R.drawable.pet_hormiga_asustado,
             PetMood.ENOJADO to R.drawable.pet_hormiga_enojado,
@@ -61,16 +53,43 @@ enum class Pet(
             PetMood.NEUTRAL to R.drawable.pet_hormiga_neutral
         )
     ),
-    LARVA(
-        id = "larva",
-        speciesName = "Larva",
-        defaultName = "Gringo",
+    CHANCHITO(
+        id = "chanchito",
+        speciesName = "Chanchito",
+        defaultName = "Troll",
+        isLocked = true,
         moodDrawables = mapOf(
-            PetMood.ASUSTADO to R.drawable.pet_larva_asustado,
-            PetMood.ENOJADO to R.drawable.pet_larva_enojado,
-            PetMood.FELIZ to R.drawable.pet_larva_feliz,
-            PetMood.TRISTE to R.drawable.pet_larva_triste,
-            PetMood.NEUTRAL to R.drawable.pet_larva_neutral
+            PetMood.ASUSTADO to R.drawable.pet_chanchito_asustado,
+            PetMood.ENOJADO to R.drawable.pet_chanchito_enojado,
+            PetMood.FELIZ to R.drawable.pet_chanchito_feliz,
+            PetMood.TRISTE to R.drawable.pet_chanchito_triste,
+            PetMood.NEUTRAL to R.drawable.pet_chanchito_neutral
+        )
+    ),
+    ABEJA(
+        id = "abeja",
+        speciesName = "Abeja",
+        defaultName = "Miel",
+        isLocked = true,
+        moodDrawables = mapOf(
+            PetMood.ASUSTADO to R.drawable.pet_abeja_asustado,
+            PetMood.ENOJADO to R.drawable.pet_abeja_enojado,
+            PetMood.FELIZ to R.drawable.pet_abeja_feliz,
+            PetMood.TRISTE to R.drawable.pet_abeja_triste,
+            PetMood.NEUTRAL to R.drawable.pet_abeja_neutral
+        )
+    ),
+    REYGEKO(
+        id = "reygeko",
+        speciesName = "Reygeko",
+        defaultName = "Oscar",
+        isLocked = true,
+        moodDrawables = mapOf(
+            PetMood.ASUSTADO to R.drawable.pet_reygeko_asustado,
+            PetMood.ENOJADO to R.drawable.pet_reygeko_enojado,
+            PetMood.FELIZ to R.drawable.pet_reygeko_feliz,
+            PetMood.TRISTE to R.drawable.pet_reygeko_triste,
+            PetMood.NEUTRAL to R.drawable.pet_reygeko_neutral
         )
     );
 

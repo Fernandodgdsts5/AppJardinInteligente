@@ -20,11 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.*
@@ -250,6 +252,31 @@ fun MainAppContent(
                 NavigationBarItem(
                     icon = {
                         Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = stringResource(R.string.nav_missions)
+                        )
+                    },
+                    label = { Text(stringResource(R.string.nav_missions), fontWeight = FontWeight.Bold) },
+                    selected = currentRoute == "missions",
+                    onClick = {
+                        bottomNavController.navigate("missions") {
+                            launchSingleTop = true
+                            restoreState = true
+                            popUpTo("main")
+                        }
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color.White,
+                        selectedTextColor = activeColor,
+                        indicatorColor = activeColor,
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray
+                    )
+                )
+
+                NavigationBarItem(
+                    icon = {
+                        Icon(
                             imageVector = Icons.AutoMirrored.Filled.List,
                             contentDescription = "Historial"
                         )
@@ -311,8 +338,20 @@ fun MainAppContent(
                         onNavigateToSettings = { bottomNavController.navigate("settings") }
                     )
                 }
+                composable("missions") { MissionsScreen() }
                 composable("history") { HistoryScreen(viewModel) }
-                composable("settings") { SettingsScreen(viewModel) }
+                composable("settings") { 
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onNavigateToMissions = {
+                            bottomNavController.navigate("missions") {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo("main")
+                            }
+                        }
+                    ) 
+                }
             }
         }
     }

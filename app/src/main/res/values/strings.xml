@@ -53,4 +53,9 @@
     <string name="cd_select_all">Seleccionar todo</string>
     <string name="diagnose_plant">Diagnosticar mi planta</string>
     <string name="advice_button">Consejo</string>
+    <string name="nav_missions">Misiones</string>
+    <string name="unlock_mission_dialog_title">Mascota bloqueada</string>
+    <string name="unlock_mission_dialog_text">Completa misiones para desbloquear a %s</string>
+    <string name="btn_go">Ir</string>
+    <string name="btn_cancel">Cancelar</string>
 </resources>

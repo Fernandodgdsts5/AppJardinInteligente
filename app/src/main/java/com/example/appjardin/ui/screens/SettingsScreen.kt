@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -73,7 +75,7 @@ private val PET_CARD_HEIGHT = 180.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: GardenViewModel) {
+fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -101,6 +103,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
     var tempNameInput by remember(userName) { mutableStateOf(userName) }
     var showAddDialog by remember { mutableStateOf(false) }
     var plantToEdit by remember { mutableStateOf<PlantEntity?>(null) }
+    var lockedPetToUnlock by remember { mutableStateOf<Pet?>(null) }
     
     // Plant detail bottom sheet state surviving rotation via ID
     var plantDetailId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -472,84 +475,159 @@ fun SettingsScreen(viewModel: GardenViewModel) {
 
                         HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
 
-                        // Pet Grid (2 columns)
-                        val pets = Pet.entries
-                        pets.chunked(2).forEach { rowPets ->
+                        // Pet Grid (Ordered: Larva, Gusano, Hormiga, Chanchito, Abeja + Reygeko double cell at end)
+                        val petsTop = listOf(Pet.LARVA, Pet.GUSANO, Pet.HORMIGA, Pet.CHANCHITO, Pet.ABEJA)
+                        petsTop.chunked(2).forEach { rowPets ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 rowPets.forEach { pet ->
-                                    val isPetSelected = selectedPet == pet
-                                    val petEffectiveName = petNames[pet.id] ?: pet.defaultName
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .border(
-                                                BorderStroke(
-                                                    width = if (isPetSelected) 2.dp else 1.dp,
-                                                    color = if (isPetSelected) activeColor else Color.LightGray.copy(alpha = 0.5f)
-                                                ),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            .background(if (isPetSelected) activeColor.copy(alpha = 0.05f) else Color.White)
-                                            .clickable {
+                                    PetGridCell(
+                                        pet = pet,
+                                        selectedPet = selectedPet,
+                                        petNames = petNames,
+                                        activeColor = activeColor,
+                                        modifier = Modifier.weight(1f),
+                                        onPetClick = {
+                                            if (pet.isLocked) {
+                                                lockedPetToUnlock = pet
+                                            } else {
                                                 viewModel.selectPet(pet.id)
                                                 isEditingPetName = false
                                             }
-                                            .padding(12.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(70.dp)
-                                            ) {
-                                                Image(
-                                                    painter = painterResource(id = pet.getDrawable(PetMood.FELIZ)),
-                                                    contentDescription = pet.speciesName,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Fit
-                                                )
-                                                if (isPetSelected) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(22.dp)
-                                                            .align(Alignment.TopEnd)
-                                                            .background(activeColor, CircleShape),
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Check,
-                                                            contentDescription = "Seleccionada",
-                                                            tint = Color.White,
-                                                            modifier = Modifier.size(14.dp)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Text(
-                                                text = petEffectiveName,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = DarkText
-                                            )
                                         }
-                                    }
+                                    )
                                 }
                                 if (rowPets.size == 1) {
                                     Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
                         }
+
+                        // Reygeko double cell at the end
+                        val reygeko = Pet.REYGEKO
+                        val isReygekoSelected = selectedPet == reygeko
+                        val reygekoEffectiveName = petNames[reygeko.id] ?: reygeko.defaultName
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .alpha(if (reygeko.isLocked) 0.5f else 1f)
+                                .border(
+                                    BorderStroke(
+                                        width = if (isReygekoSelected) 2.dp else 1.dp,
+                                        color = if (isReygekoSelected) activeColor else Color.LightGray.copy(alpha = 0.5f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .background(if (isReygekoSelected) activeColor.copy(alpha = 0.05f) else Color.White)
+                                .clickable {
+                                    if (reygeko.isLocked) {
+                                        lockedPetToUnlock = reygeko
+                                    } else {
+                                        viewModel.selectPet(reygeko.id)
+                                        isEditingPetName = false
+                                    }
+                                }
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(70.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = reygeko.getDrawable(PetMood.FELIZ)),
+                                        contentDescription = reygeko.speciesName,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    if (isReygekoSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(22.dp)
+                                                .align(Alignment.TopEnd)
+                                                .background(activeColor, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Seleccionada",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                    if (reygeko.isLocked) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .align(Alignment.TopStart)
+                                                .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Lock,
+                                                contentDescription = "Bloqueada",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(
+                                    horizontalAlignment = Alignment.Start,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = reygeko.speciesName,
+                                        fontSize = 13.sp,
+                                        color = Color.Gray
+                                    )
+                                    Text(
+                                        text = reygekoEffectiveName,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DarkText
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        // Locked Pet Unlock Dialog
+        if (lockedPetToUnlock != null) {
+            val pet = lockedPetToUnlock!!
+            AlertDialog(
+                onDismissRequest = { lockedPetToUnlock = null },
+                title = { Text(stringResource(R.string.unlock_mission_dialog_title), fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(R.string.unlock_mission_dialog_text, pet.defaultName)) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            lockedPetToUnlock = null
+                            onNavigateToMissions()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = activeColor)
+                    ) {
+                        Text(stringResource(R.string.btn_go), color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { lockedPetToUnlock = null }) {
+                        Text(stringResource(R.string.btn_cancel), color = Color.Gray)
+                    }
+                }
+            )
         }
 
         // Plant Detail Bottom Sheet
@@ -1408,3 +1486,88 @@ private fun cleanupTempUri(uri: Uri?) {
         android.util.Log.e("PlantCamera", "Error cleaning up temp uri: $uri", e)
     }
 }
+
+@Composable
+fun PetGridCell(
+    pet: Pet,
+    selectedPet: Pet,
+    petNames: Map<String, String>,
+    activeColor: Color,
+    modifier: Modifier = Modifier,
+    onPetClick: () -> Unit
+) {
+    val isPetSelected = selectedPet == pet
+    val petEffectiveName = petNames[pet.id] ?: pet.defaultName
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .alpha(if (pet.isLocked) 0.5f else 1f)
+            .border(
+                BorderStroke(
+                    width = if (isPetSelected) 2.dp else 1.dp,
+                    color = if (isPetSelected) activeColor else Color.LightGray.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(if (isPetSelected) activeColor.copy(alpha = 0.05f) else Color.White)
+            .clickable { onPetClick() }
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier.size(70.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = pet.getDrawable(PetMood.FELIZ)),
+                    contentDescription = pet.speciesName,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                if (isPetSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .align(Alignment.TopEnd)
+                            .background(activeColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Seleccionada",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                if (pet.isLocked) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .align(Alignment.TopStart)
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Bloqueada",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = petEffectiveName,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkText
+            )
+        }
+    }
+}
+
