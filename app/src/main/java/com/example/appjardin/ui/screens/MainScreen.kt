@@ -1,6 +1,5 @@
 package com.example.appjardin.ui.screens
 
-import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -48,7 +47,7 @@ fun Modifier.neumorphic(cornerRadius: Dp = 28.dp) = this.drawBehind {
     }
     val radius = cornerRadius.toPx()
     
-    // Top-Left Light Highlight
+    // Top-Light Highlight
     paint.color = android.graphics.Color.WHITE
     paint.setShadowLayer(
         10.dp.toPx(),
@@ -62,7 +61,7 @@ fun Modifier.neumorphic(cornerRadius: Dp = 28.dp) = this.drawBehind {
         paint
     )
     
-    // Bottom-Right Dark Shadow
+    // Bottom-Dark Shadow
     paint.color = android.graphics.Color.TRANSPARENT
     paint.setShadowLayer(
         10.dp.toPx(),
@@ -127,7 +126,7 @@ fun MainScreen(
         else -> R.drawable.planta
     }
 
-    // Advice button chest shake & glow animation setup
+    // Advice button particle sparkles & shake animation setup
     val infiniteTransition = rememberInfiniteTransition(label = "AdviceAnim")
     
     val shakeAngle by infiniteTransition.animateFloat(
@@ -135,59 +134,28 @@ fun MainScreen(
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
-                durationMillis = 2500
+                durationMillis = 2300
                 0f at 0
-                6f at 50
-                (-6f) at 100
-                6f at 150
-                (-6f) at 200
-                6f at 250
-                (-6f) at 300
-                2f at 350
+                5f at 80
+                (-5f) at 160
+                5f at 240
+                (-3f) at 320
                 0f at 500
-                0f at 2500
+                0f at 2300
             },
             repeatMode = RepeatMode.Restart
         ),
         label = "ShakeAngle"
     )
 
-    val shakeTranslation by infiniteTransition.animateFloat(
+    val burstProgress by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 2500
-                0f at 0
-                2f at 50
-                (-2f) at 100
-                2f at 150
-                (-2f) at 200
-                2f at 250
-                (-2f) at 300
-                1f at 350
-                0f at 500
-                0f at 2500
-            },
+            animation = tween(2300, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "ShakeTranslation"
-    )
-
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 2500
-                0f at 0
-                0.8f at 250
-                0f at 500
-                0f at 2500
-            },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "GlowAlpha"
+        label = "BurstProgress"
     )
 
     Scaffold(
@@ -214,147 +182,161 @@ fun MainScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. MAIN CARD (Height 265dp)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(265.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(20.dp)
+            // Upper content container
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // 1. MAIN CARD (Height 265dp)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(265.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Left Column (~50%): Moisture Gauge & Details with equal itemSpacing
+                        val itemSpacing = 6.dp
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WaterDrop,
+                                contentDescription = null,
+                                tint = activeColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.height(itemSpacing))
+                            CircularGauge(
+                                percentage = if (plant == null) 0f else humidity,
+                                stateColor = activeColor,
+                                modifier = Modifier.size(110.dp)
+                            )
+                            Spacer(modifier = Modifier.height(itemSpacing))
+                            Text(
+                                text = stateText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = activeColor,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(itemSpacing))
+                            Text(
+                                text = "Humedad del suelo",
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        // Right Column (~50%): Plant Photo
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(start = 6.dp)
+                        ) {
+                            AsyncImage(
+                                model = plantImageModel,
+                                contentDescription = plant?.name ?: "Planta",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(16.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+
+                // 2. PET + CONSEJO BUTTON ROW
+                val petMood = state.toPetMood()
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left Column (~50%): Moisture Gauge & Details with equal itemSpacing
-                    val itemSpacing = 6.dp
-                    Column(
+                    Image(
+                        painter = painterResource(id = selectedPet.getDrawable(petMood)),
+                        contentDescription = selectedPet.speciesName,
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WaterDrop,
-                            contentDescription = null,
-                            tint = activeColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.height(itemSpacing))
-                        CircularGauge(
-                            percentage = if (plant == null) 0f else humidity,
-                            stateColor = activeColor,
-                            modifier = Modifier.size(110.dp)
-                        )
-                        Spacer(modifier = Modifier.height(itemSpacing))
-                        Text(
-                            text = stateText,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = activeColor,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(itemSpacing))
-                        Text(
-                            text = "Humedad del suelo",
-                            fontSize = 11.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    // Right Column (~50%): Plant Photo
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(start = 6.dp)
-                    ) {
-                        AsyncImage(
-                            model = plantImageModel,
-                            contentDescription = plant?.name ?: "Planta",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(16.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
-            }
-
-            // 2. PET + CONSEJO BUTTON ROW
-            val petMood = state.toPetMood()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Image(
-                    painter = painterResource(id = selectedPet.getDrawable(petMood)),
-                    contentDescription = selectedPet.speciesName,
-                    modifier = Modifier
-                        .height(210.dp)
-                        .fillMaxWidth(0.6f)
-                        .aspectRatio(1f),
-                    contentScale = ContentScale.Fit
-                )
-
-                Button(
-                    onClick = { /* TODO: Consejo */ },
-                    modifier = Modifier
-                        .height(48.dp)
-                        .padding(start = 12.dp)
-                        .graphicsLayer {
-                            rotationZ = shakeAngle
-                            translationX = shakeTranslation
-                        }
-                        .drawBehind {
-                            if (glowAlpha > 0f) {
-                                val paint = Paint().apply {
-                                    isAntiAlias = true
-                                    color = activeColor.copy(alpha = glowAlpha).toArgb()
-                                    maskFilter = BlurMaskFilter(20f, BlurMaskFilter.Blur.NORMAL)
-                                }
-                                drawContext.canvas.nativeCanvas.drawRoundRect(
-                                    -8f, -8f, size.width + 8f, size.height + 8f,
-                                    size.height / 2f, size.height / 2f,
-                                    paint
-                                )
-                                
-                                val sparkPaint = Paint().apply {
-                                    isAntiAlias = true
-                                    color = android.graphics.Color.WHITE
-                                }
-                                val cx = size.width / 2f
-                                val cy = size.height / 2f
-                                drawContext.canvas.nativeCanvas.drawCircle(cx - 25f, cy - 12f, 3.5f * glowAlpha, sparkPaint)
-                                drawContext.canvas.nativeCanvas.drawCircle(cx + 30f, cy - 15f, 3f * glowAlpha, sparkPaint)
-                                drawContext.canvas.nativeCanvas.drawCircle(cx + 25f, cy + 12f, 4f * glowAlpha, sparkPaint)
-                            }
-                        },
-                    colors = ButtonDefaults.buttonColors(containerColor = activeColor),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.advice_button),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                            .height(210.dp)
+                            .fillMaxWidth(0.6f)
+                            .aspectRatio(1f),
+                        contentScale = ContentScale.Fit
                     )
+
+                    Button(
+                        onClick = { /* TODO: Consejo */ },
+                        modifier = Modifier
+                            .height(38.dp)
+                            .padding(start = 12.dp)
+                            .graphicsLayer {
+                                rotationZ = shakeAngle
+                            }
+                            .drawBehind {
+                                val progress = (burstProgress / 0.8f).coerceIn(0f, 1f)
+                                if (burstProgress < 0.8f) {
+                                    val alpha = (1f - progress).coerceIn(0f, 1f)
+                                    val paint = Paint().apply {
+                                        isAntiAlias = true
+                                    }
+                                    
+                                    val cx = size.width / 2f
+                                    val cy = size.height / 2f
+                                    
+                                    val particles = listOf(
+                                        Triple(-35f, -20f, activeColor),
+                                        Triple(40f, -25f, Color.White),
+                                        Triple(-45f, 20f, Color.White),
+                                        Triple(35f, 20f, activeColor),
+                                        Triple(-15f, -40f, activeColor),
+                                        Triple(20f, 40f, Color.White)
+                                    )
+                                    
+                                    particles.forEachIndexed { index, (dx, dy, color) ->
+                                        val currentX = cx + dx * (0.6f + 1.4f * progress)
+                                        val currentY = cy + dy * (0.6f + 1.4f * progress)
+                                        val radius = (3f + index % 2 * 1.5f) * (1f + progress * 0.5f)
+                                        
+                                        paint.color = color.copy(alpha = alpha).toArgb()
+                                        drawContext.canvas.nativeCanvas.drawCircle(currentX, currentY, radius, paint)
+                                    }
+                                }
+                            },
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = activeColor),
+                        shape = RoundedCornerShape(19.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.advice_button),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
-            // 3. WATERING BUTTON (Intact logic & style)
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // 3 & 4. BOTTOM BUTTONS (Watering + Diagnose) glued to bottom with ~12-16dp padding
             val (buttonText, isEnabled, buttonAction) = when {
                 plant == null -> {
                     Triple("ELEGIR PLANTA", true) { onNavigateToSettings() }
@@ -371,8 +353,11 @@ fun MainScreen(
             }
 
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (plant != null && isExcess && !pumpOn) {
                     Text(
@@ -381,7 +366,7 @@ fun MainScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 6.dp)
+                        modifier = Modifier.padding(bottom = 2.dp)
                     )
                 }
 
@@ -405,42 +390,42 @@ fun MainScreen(
                         color = if (isEnabled) Color.White else Color.DarkGray
                     )
                 }
-            }
 
-            // 4. DIAGNOSE PLANT BUTTON (Soft Neumorphic Style)
-            val darkGreen = Color(0xFF2E5E3E)
+                // DIAGNOSE PLANT BUTTON (Soft Neumorphic Style)
+                val darkGreen = Color(0xFF2E5E3E)
 
-            OutlinedButton(
-                onClick = { /* TODO: Diagnóstico */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .neumorphic(28.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = CreamBackground,
-                    contentColor = darkGreen
-                ),
-                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.35f))
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
+                OutlinedButton(
+                    onClick = { /* TODO: Diagnóstico */ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .neumorphic(28.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = CreamBackground,
+                        contentColor = darkGreen
+                    ),
+                    border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.35f))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PhotoCamera,
-                        contentDescription = null,
-                        tint = darkGreen,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.diagnose_plant),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = darkGreen
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoCamera,
+                            contentDescription = null,
+                            tint = darkGreen,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.diagnose_plant),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = darkGreen
+                        )
+                    }
                 }
             }
         }

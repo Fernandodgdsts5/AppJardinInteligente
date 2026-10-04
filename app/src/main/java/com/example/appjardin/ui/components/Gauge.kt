@@ -58,10 +58,10 @@ fun CircularGauge(
             )
         }
         
-        // Percentage centered inside semicircle
+        // Percentage centered inside semicircle (-20% from 42sp -> 34sp)
         Text(
             text = "${animatedPercentage.toInt()}%",
-            fontSize = 42.sp,
+            fontSize = 34.sp,
             fontWeight = FontWeight.Bold,
             color = DarkText,
             modifier = Modifier.align(Alignment.Center)
