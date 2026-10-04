@@ -397,8 +397,6 @@ fun MainScreen(
                     }
 
                     // DIAGNOSE PLANT BUTTON (Soft Neumorphic Style)
-                    val darkGreen = Color(0xFF2E5E3E)
-
                     OutlinedButton(
                         onClick = { /* TODO: Diagnóstico */ },
                         modifier = Modifier
@@ -408,7 +406,7 @@ fun MainScreen(
                         shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = CreamBackground,
-                            contentColor = darkGreen
+                            contentColor = activeColor
                         ),
                         border = BorderStroke(1.dp, activeColor)
                     ) {
@@ -420,7 +418,7 @@ fun MainScreen(
                             Icon(
                                 imageVector = Icons.Default.PhotoCamera,
                                 contentDescription = null,
-                                tint = darkGreen,
+                                tint = activeColor,
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -428,7 +426,7 @@ fun MainScreen(
                                 text = stringResource(R.string.diagnose_plant),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = darkGreen
+                                color = activeColor
                             )
                         }
                     }
