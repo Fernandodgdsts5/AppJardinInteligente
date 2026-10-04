@@ -191,86 +191,86 @@ fun MainScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Upper content container
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                // 1. MAIN CARD (Height 265dp)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(265.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    // 1. MAIN CARD (Height 265dp)
-                    Card(
+                    Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(265.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        shape = RoundedCornerShape(20.dp)
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
+                        // Left Column (~50%): Moisture Gauge & Details with equal itemSpacing
+                        val itemSpacing = 6.dp
+                        Column(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            // Left Column (~50%): Moisture Gauge & Details with equal itemSpacing
-                            val itemSpacing = 6.dp
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.WaterDrop,
-                                    contentDescription = null,
-                                    tint = activeColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.height(itemSpacing))
-                                CircularGauge(
-                                    percentage = if (plant == null) 0f else humidity,
-                                    stateColor = activeColor,
-                                    modifier = Modifier.size(110.dp)
-                                )
-                                Spacer(modifier = Modifier.height(itemSpacing))
-                                Text(
-                                    text = stateText,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = activeColor,
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(modifier = Modifier.height(itemSpacing))
-                                Text(
-                                    text = "Humedad del suelo",
-                                    fontSize = 11.sp,
-                                    color = Color.Gray,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.WaterDrop,
+                                contentDescription = null,
+                                tint = activeColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.height(itemSpacing))
+                            CircularGauge(
+                                percentage = if (plant == null) 0f else humidity,
+                                stateColor = activeColor,
+                                modifier = Modifier.size(110.dp)
+                            )
+                            Spacer(modifier = Modifier.height(itemSpacing))
+                            Text(
+                                text = stateText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = activeColor,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(itemSpacing))
+                            Text(
+                                text = "Humedad del suelo",
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
 
-                            // Right Column (~50%): Plant Photo
-                            Box(
+                        // Right Column (~50%): Plant Photo
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(start = 6.dp)
+                        ) {
+                            AsyncImage(
+                                model = plantImageModel,
+                                contentDescription = plant?.name ?: "Planta",
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .padding(start = 6.dp)
-                            ) {
-                                AsyncImage(
-                                    model = plantImageModel,
-                                    contentDescription = plant?.name ?: "Planta",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(16.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(16.dp)),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                     }
+                }
 
-                    // 2. PET + CONSEJO BUTTON ROW
+                // 2. PET + CONSEJO BUTTON ROW (Vertically centered in available space)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     val petMood = state.toPetMood()
                     Row(
                         modifier = Modifier
@@ -283,7 +283,7 @@ fun MainScreen(
                             painter = painterResource(id = selectedPet.getDrawable(petMood)),
                             contentDescription = selectedPet.speciesName,
                             modifier = Modifier
-                                .height(210.dp)
+                                .height(240.dp)
                                 .fillMaxWidth(0.6f)
                                 .aspectRatio(1f),
                             contentScale = ContentScale.Fit
