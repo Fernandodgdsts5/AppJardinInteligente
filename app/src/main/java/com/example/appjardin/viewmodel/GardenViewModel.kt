@@ -102,7 +102,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     private var waitingForFirstTelemetry = false
     private var lastKnownHumidity: Float = 0f
     
-    private var sessionMinHumidity: Float = 100f
+    private var appStartMinHumidity: Float = 100f
     private var sessionMaxHumidity: Float = 0f
 
     init {
@@ -141,7 +141,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                 } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
                     _pumpOn.value = false // Reset optimistic state on disconnect
                     if (isRecordingSession) {
-                        repository.recordSessionEnd(lastKnownHumidity, sessionMinHumidity, sessionMaxHumidity)
+                        repository.recordSessionEnd(lastKnownHumidity, appStartMinHumidity, sessionMaxHumidity)
                         isRecordingSession = false
                         waitingForFirstTelemetry = false
                     }
@@ -155,19 +155,24 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                 _pumpOn.value = tele.bomba
                 lastKnownHumidity = tele.humedad
                 
-                if (isRecordingSession) {
-                    sessionMinHumidity = minOf(sessionMinHumidity, tele.humedad)
-                    sessionMaxHumidity = maxOf(sessionMaxHumidity, tele.humedad)
+                val h = tele.humedad
+                if (h in 0f..100f) {
+                    if (h < appStartMinHumidity) {
+                        appStartMinHumidity = h
+                    }
                 }
+                sessionMaxHumidity = maxOf(sessionMaxHumidity, h)
                 
                 // Add Log to verify optimistic vs real state
                 Log.d("JardinBLE", "bomba optimista=$prevOptimistic vs bomba real telemetría=${tele.bomba}, humedad=${tele.humedad}")
                 
                 val plant = _selectedPlant.value
                 if (plant != null && waitingForFirstTelemetry) {
-                    sessionMinHumidity = tele.humedad
-                    sessionMaxHumidity = tele.humedad
-                    repository.recordSessionStart(plant.id, plant.name, tele.humedad, sessionMinHumidity, sessionMaxHumidity)
+                    if (h in 0f..100f && h < appStartMinHumidity) {
+                        appStartMinHumidity = h
+                    }
+                    sessionMaxHumidity = maxOf(sessionMaxHumidity, h)
+                    repository.recordSessionStart(plant.id, plant.name, tele.humedad, appStartMinHumidity, sessionMaxHumidity)
                     waitingForFirstTelemetry = false
                     isRecordingSession = true
                 }
@@ -325,7 +330,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         super.onCleared()
         if (isRecordingSession) {
             runBlocking(Dispatchers.IO) {
-                repository.recordSessionEnd(lastKnownHumidity, sessionMinHumidity, sessionMaxHumidity)
+                repository.recordSessionEnd(lastKnownHumidity, appStartMinHumidity, sessionMaxHumidity)
             }
         }
         bleManager.closeGatt()
