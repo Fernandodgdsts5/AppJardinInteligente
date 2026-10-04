@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,7 @@ import coil.compose.AsyncImage
 import com.example.appjardin.R
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.model.MoistureState
+import com.example.appjardin.model.Telemetry
 import com.example.appjardin.ui.theme.*
 import com.example.appjardin.util.PlantImageStorage
 import com.example.appjardin.viewmodel.GardenViewModel
@@ -50,6 +52,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +84,9 @@ fun SettingsScreen(viewModel: GardenViewModel) {
     var tempNameInput by remember(userName) { mutableStateOf(userName) }
     var showAddDialog by remember { mutableStateOf(false) }
     var plantToEdit by remember { mutableStateOf<PlantEntity?>(null) }
+    
+    // Plant detail bottom sheet state surviving rotation via ID
+    var plantDetailId by rememberSaveable { mutableStateOf<Int?>(null) }
 
     Scaffold(
         topBar = {
@@ -201,7 +207,10 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                         plant = plant,
                         isSelected = isSelected,
                         activeColor = activeColor,
-                        onCardClick = { viewModel.selectPlant(plant.id) },
+                        onCardClick = {
+                            viewModel.selectPlant(plant.id)
+                            plantDetailId = plant.id
+                        },
                         onEditClick = { plantToEdit = plant }
                     )
                 }
@@ -222,6 +231,27 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
+            }
+        }
+
+        // Plant Detail Bottom Sheet
+        if (plantDetailId != null) {
+            val currentPlant = plants.find { it.id == plantDetailId }
+            if (currentPlant != null) {
+                PlantDetailBottomSheet(
+                    plant = currentPlant,
+                    selectedPlantId = selectedPlant?.id,
+                    telemetry = telemetry,
+                    viewModel = viewModel,
+                    onDismiss = { plantDetailId = null },
+                    onEdit = {
+                        plantDetailId = null
+                        plantToEdit = currentPlant
+                    },
+                    activeColor = activeColor
+                )
+            } else {
+                plantDetailId = null
             }
         }
 
@@ -369,6 +399,230 @@ fun PlantSelectionCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun PlantDetailBottomSheet(
+    plant: PlantEntity,
+    selectedPlantId: Int?,
+    telemetry: Telemetry?,
+    viewModel: GardenViewModel,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    activeColor: Color
+) {
+    val defaultRes = PlantImageStorage.getDefaultDrawableRes(plant.defaultKey)
+    val imageModel = when {
+        !plant.imagePath.isNullOrBlank() -> File(plant.imagePath)
+        defaultRes != null -> defaultRes
+        else -> R.drawable.planta
+    }
+
+    val isSelected = selectedPlantId == plant.id
+    val humidity = telemetry?.humedad ?: 0f
+    val moistureState = if (isSelected && telemetry != null) {
+        viewModel.getMoistureState(humidity, plant)
+    } else null
+
+    val stateText = moistureState?.let {
+        when (it) {
+            MoistureState.LOW_MOISTURE -> "Poca humedad"
+            MoistureState.MEDIUM_MOISTURE -> "Humedad media"
+            MoistureState.GOOD_MOISTURE -> "Humedad adecuada"
+            MoistureState.EXCESS_MOISTURE -> "Exceso de humedad"
+            else -> null
+        }
+    }
+
+    val stateColor = moistureState?.let {
+        when (it) {
+            MoistureState.LOW_MOISTURE -> ColorLowMoisture
+            MoistureState.MEDIUM_MOISTURE -> ColorMediumMoisture
+            MoistureState.GOOD_MOISTURE -> ColorGoodMoisture
+            MoistureState.EXCESS_MOISTURE -> ColorExcessMoisture
+            else -> Color.Gray
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Large Image (4:3 aspect ratio)
+            AsyncImage(
+                model = imageModel,
+                contentDescription = plant.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4f / 3f)
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            // Name & Selected badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = plant.name,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkText
+                )
+
+                if (isSelected) {
+                    Surface(
+                        color = activeColor.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = "Planta seleccionada",
+                            color = activeColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            // Type
+            val plantType = if (plant.defaultKey != null) "Predeterminada" else "Personalizada"
+            Text(
+                text = "Tipo: $plantType",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+
+            // Humidity Thresholds
+            Text(
+                text = "Umbrales de Humedad",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkText
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThresholdRow("Humedad Mínima", "${plant.humedadMinima}%", ColorLowMoisture)
+                ThresholdRow("Humedad Adecuada (Buena)", "${plant.humedadBuena}%", ColorGoodMoisture)
+                ThresholdRow("Humedad Exceso", "> ${plant.humedadExceso}%", ColorExcessMoisture)
+            }
+
+            // Current Humidity (Only if selected and telemetry available)
+            if (isSelected && telemetry != null && stateText != null && stateColor != null) {
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+
+                Text(
+                    text = "Estado Actual en Vivo",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkText
+                )
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = stateColor.copy(alpha = 0.1f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Humedad actual: ${String.format(Locale.getDefault(), "%.1f", humidity)}%",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
+                        Surface(
+                            color = stateColor,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = stateText,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    border = BorderStroke(1.5.dp, activeColor)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = activeColor)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Editar planta", color = activeColor, fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = activeColor)
+                ) {
+                    Text("Cerrar", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+fun ThresholdRow(label: String, value: String, color: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(color, CircleShape)
+            )
+            Text(text = label, fontSize = 14.sp, color = DarkText)
+        }
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkText)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun PlantFormDialog(
     plantToEdit: PlantEntity? = null,
     onDismiss: () -> Unit,
@@ -384,7 +638,6 @@ fun PlantFormDialog(
     var excesoStr by remember { mutableStateOf(plantToEdit?.humedadExceso?.toString() ?: "") }
     var errorMsg by remember { mutableStateOf("") }
     
-    // Image state: if editing, start with current plant imagePath; else null
     var currentImagePath by remember { mutableStateOf(plantToEdit?.imagePath) }
     
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
