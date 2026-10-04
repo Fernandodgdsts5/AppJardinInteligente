@@ -3,7 +3,6 @@ package com.example.appjardin.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,11 +30,11 @@ fun CircularGauge(
     val animatedPercentage by animateFloatAsState(targetValue = percentage, label = "ProgressAnimation")
     
     Box(
-        modifier = modifier.size(220.dp),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            val strokeWidth = 18.dp.toPx()
+        Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+            val strokeWidth = 14.dp.toPx()
             val startAngle = 135f
             val sweepAngle = 270f
             
@@ -61,19 +60,24 @@ fun CircularGauge(
             )
         }
         
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "${animatedPercentage.toInt()}%",
-                fontSize = 44.sp,
-                fontWeight = FontWeight.Bold,
-                color = DarkText
-            )
-            Text(
-                text = stateText,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = stateColor
-            )
-        }
+        // Percentage centered inside semicircle
+        Text(
+            text = "${animatedPercentage.toInt()}%",
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Bold,
+            color = DarkText,
+            modifier = Modifier.align(Alignment.Center)
+        )
+        
+        // State text just below the semicircle
+        Text(
+            text = stateText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = stateColor,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 0.dp)
+        )
     }
 }

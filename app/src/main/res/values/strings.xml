@@ -52,4 +52,5 @@
     <string name="cd_delete">Eliminar selección</string>
     <string name="cd_select_all">Seleccionar todo</string>
     <string name="diagnose_plant">Diagnosticar mi planta</string>
+    <string name="advice_button">Consejo</string>
 </resources>
