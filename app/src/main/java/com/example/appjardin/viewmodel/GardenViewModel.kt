@@ -11,8 +11,10 @@ import com.example.appjardin.data.Repository
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.model.Config
 import com.example.appjardin.model.MoistureState
+import com.example.appjardin.model.Pet
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -21,7 +23,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class GardenViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = Repository(application)
     val bleManager = BleManager(application)
@@ -41,6 +43,35 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     val allSessions = repository.allSessions
         .catch { Log.e("GardenViewModel", "Error fetching sessions", it); emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val selectedPetId = repository.selectedPetIdFlow
+        .catch { Log.e("GardenViewModel", "Error fetching selected pet id", it); emit("gusano") }
+        .stateIn(viewModelScope, SharingStarted.Lazily, "gusano")
+
+    val petNames: StateFlow<Map<String, String>> = selectedPetId
+        .flatMapLatest { _ ->
+            combine(
+                Pet.entries.map { pet ->
+                    repository.getPetNameFlow(pet.id, pet.defaultName)
+                        .map { name -> pet.id to name }
+                }
+            ) { pairs ->
+                pairs.toMap()
+            }
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Lazily,
+            Pet.entries.associate { it.id to it.defaultName }
+        )
+
+    val selectedPetName: StateFlow<String> = combine(selectedPetId, petNames) { id, names ->
+        names[id] ?: Pet.fromId(id).defaultName
+    }.stateIn(viewModelScope, SharingStarted.Lazily, "Coco")
+
+    val selectedPet: StateFlow<Pet> = selectedPetId
+        .map { Pet.fromId(it) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, Pet.GUSANO)
     
     private val _selectedPlant = MutableStateFlow<PlantEntity?>(null)
     val selectedPlant: StateFlow<PlantEntity?> = _selectedPlant
@@ -141,6 +172,24 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun saveUserName(name: String) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.saveUserName(name)
+        }
+    }
+
+    fun selectPet(id: String) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.saveSelectedPetId(id)
+        }
+    }
+
+    fun savePetName(petId: String, name: String) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.savePetName(petId, name)
+        }
+    }
+
+    fun resetPetName(petId: String) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.resetPetName(petId)
         }
     }
 

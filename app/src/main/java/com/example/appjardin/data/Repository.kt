@@ -10,7 +10,6 @@ import com.example.appjardin.util.PlantImageStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-
 import kotlinx.coroutines.flow.first
 
 class Repository(private val context: Context) {
@@ -24,9 +23,15 @@ class Repository(private val context: Context) {
     
     val userNameFlow: Flow<String> = settingsDataStore.userNameFlow
     val selectedPlantIdFlow: Flow<Int> = settingsDataStore.selectedPlantIdFlow
+    val selectedPetIdFlow: Flow<String> = settingsDataStore.selectedPetIdFlow
+
+    fun getPetNameFlow(petId: String, defaultName: String): Flow<String> {
+        return settingsDataStore.getPetNameFlow(petId, defaultName)
+    }
 
     suspend fun insertDefaultPlantsIfEmpty() = withContext(Dispatchers.IO) {
         try {
+            settingsDataStore.checkAndMigrateLegacyPetName()
             val defaultsSeeded = settingsDataStore.defaultsSeededFlow.first()
             val count = plantDao.getCount()
             if (!defaultsSeeded) {
@@ -115,6 +120,30 @@ class Repository(private val context: Context) {
             settingsDataStore.saveSelectedPlantId(id)
         } catch (e: Exception) {
             Log.e("Repository", "Error saving selected plant id", e)
+        }
+    }
+
+    suspend fun saveSelectedPetId(id: String) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.saveSelectedPetId(id)
+        } catch (e: Exception) {
+            Log.e("Pet", "Error saving selected pet id", e)
+        }
+    }
+
+    suspend fun savePetName(petId: String, name: String) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.savePetName(petId, name)
+        } catch (e: Exception) {
+            Log.e("Pet", "Error saving pet name", e)
+        }
+    }
+
+    suspend fun resetPetName(petId: String) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.resetPetName(petId)
+        } catch (e: Exception) {
+            Log.e("Pet", "Error resetting pet name", e)
         }
     }
     

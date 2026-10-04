@@ -10,7 +10,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -40,8 +42,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.res.painterResource
+import com.example.appjardin.model.Pet
+import com.example.appjardin.model.PetMood
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import com.example.appjardin.R
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.model.MoistureState
@@ -203,18 +214,68 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                     color = DarkText
                 )
 
-                plants.forEach { plant ->
-                    val isSelected = selectedPlant?.id == plant.id
-                    PlantSelectionCard(
-                        plant = plant,
-                        isSelected = isSelected,
-                        activeColor = activeColor,
-                        onCardClick = {
-                            viewModel.selectPlant(plant.id)
-                            plantDetailId = plant.id
-                        },
-                        onEditClick = { plantToEdit = plant }
-                    )
+                val listState = rememberLazyListState()
+                val previousSize = remember { mutableStateOf(plants.size) }
+
+                LaunchedEffect(plants.size) {
+                    if (plants.size > previousSize.value) {
+                        listState.animateScrollToItem(plants.size - 1)
+                    }
+                    previousSize.value = plants.size
+                }
+
+                val cardHeight = 90.dp
+                val spacing = 8.dp
+                val visibleCount = minOf(plants.size, 3)
+                val calculatedHeight = if (plants.isEmpty()) 0.dp else (cardHeight * visibleCount) + (spacing * (visibleCount - 1))
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(calculatedHeight),
+                        verticalArrangement = Arrangement.spacedBy(spacing)
+                    ) {
+                        items(
+                            items = plants,
+                            key = { it.id }
+                        ) { plant ->
+                            val isSelected = selectedPlant?.id == plant.id
+                            PlantSelectionCard(
+                                plant = plant,
+                                isSelected = isSelected,
+                                activeColor = activeColor,
+                                onCardClick = {
+                                    viewModel.selectPlant(plant.id)
+                                    plantDetailId = plant.id
+                                },
+                                onEditClick = { plantToEdit = plant }
+                            )
+                        }
+                    }
+
+                    if (plants.size > 3 && listState.canScrollForward) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(24.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, CreamBackground.copy(alpha = 0.9f))
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.scroll_more),
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
             }
 
@@ -233,6 +294,245 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
+            }
+
+            // PET SELECTOR SECTION
+            val petNames by viewModel.petNames.collectAsStateWithLifecycle()
+            val selectedPetName by viewModel.selectedPetName.collectAsStateWithLifecycle()
+            val selectedPet by viewModel.selectedPet.collectAsStateWithLifecycle()
+            var isPetExpanded by rememberSaveable { mutableStateOf(false) }
+            var isEditingPetName by remember { mutableStateOf(false) }
+
+            val currentEffectiveName = petNames[selectedPet.id] ?: selectedPet.defaultName
+            var tempPetNameInput by remember(currentEffectiveName) { mutableStateOf(currentEffectiveName) }
+
+            LaunchedEffect(selectedPet.id) {
+                isEditingPetName = false
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .clickable { isPetExpanded = !isPetExpanded },
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.pet_section_label),
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = selectedPetName,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight(0.9f)
+                            .aspectRatio(1f)
+                    ) {
+                        Image(
+                            painter = painterResource(id = selectedPet.getDrawable(PetMood.FELIZ)),
+                            contentDescription = selectedPet.speciesName,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(visible = isPetExpanded) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Pet Name row / Edit
+                        if (!isEditingPetName) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Nombre de la mascota: $currentEffectiveName",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DarkText
+                                    )
+                                    TextButton(onClick = {
+                                        tempPetNameInput = currentEffectiveName
+                                        isEditingPetName = true
+                                    }) {
+                                        Text(stringResource(R.string.pet_name_edit), color = activeColor, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                if (currentEffectiveName != selectedPet.defaultName) {
+                                    TextButton(
+                                        onClick = { viewModel.resetPetName(selectedPet.id) },
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Text(stringResource(R.string.reset_name), fontSize = 12.sp, color = Color.Gray)
+                                    }
+                                }
+                            }
+                        } else {
+                            Column {
+                                OutlinedTextField(
+                                    value = tempPetNameInput,
+                                    onValueChange = { if (it.length <= 20) tempPetNameInput = it },
+                                    label = { Text(stringResource(R.string.pet_name_title)) },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = activeColor,
+                                        focusedLabelColor = activeColor
+                                    ),
+                                    trailingIcon = {
+                                        if (tempPetNameInput.isNotBlank()) {
+                                            IconButton(onClick = { tempPetNameInput = "" }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                            }
+                                        }
+                                    }
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(onClick = { isEditingPetName = false }) {
+                                        Text("Cancelar", color = Color.Gray)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            val trimmed = tempPetNameInput.trim()
+                                            if (trimmed.isNotBlank()) {
+                                                if (trimmed == selectedPet.defaultName) {
+                                                    viewModel.resetPetName(selectedPet.id)
+                                                } else {
+                                                    viewModel.savePetName(selectedPet.id, trimmed)
+                                                }
+                                            }
+                                            isEditingPetName = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = activeColor)
+                                    ) {
+                                        Text("Guardar")
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+
+                        // Pet Grid (2 columns)
+                        val pets = Pet.entries
+                        pets.chunked(2).forEach { rowPets ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowPets.forEach { pet ->
+                                    val isPetSelected = selectedPet == pet
+                                    val petEffectiveName = petNames[pet.id] ?: pet.defaultName
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .border(
+                                                BorderStroke(
+                                                    width = if (isPetSelected) 2.dp else 1.dp,
+                                                    color = if (isPetSelected) activeColor else Color.LightGray.copy(alpha = 0.5f)
+                                                ),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .background(if (isPetSelected) activeColor.copy(alpha = 0.05f) else Color.White)
+                                            .clickable {
+                                                viewModel.selectPet(pet.id)
+                                                isEditingPetName = false
+                                            }
+                                            .padding(12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(70.dp)
+                                            ) {
+                                                Image(
+                                                    painter = painterResource(id = pet.getDrawable(PetMood.FELIZ)),
+                                                    contentDescription = pet.speciesName,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Fit
+                                                )
+                                                if (isPetSelected) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(22.dp)
+                                                            .align(Alignment.TopEnd)
+                                                            .background(activeColor, CircleShape),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Seleccionada",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = petEffectiveName,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = DarkText
+                                            )
+                                        }
+                                    }
+                                }
+                                if (rowPets.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
