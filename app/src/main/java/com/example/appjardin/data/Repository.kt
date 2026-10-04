@@ -29,6 +29,8 @@ class Repository(private val context: Context) {
     val expFlow: Flow<Int> = settingsDataStore.expFlow
     val levelFlow: Flow<Int> = settingsDataStore.levelFlow
     val unlockedPetsFlow: Flow<Set<String>> = settingsDataStore.unlockedPetsFlow
+    val diagnosticsCountFlow: Flow<Int> = settingsDataStore.diagnosticsCountFlow
+    val plantPhotoSetFlow: Flow<Boolean> = settingsDataStore.plantPhotoSetFlow
 
     fun getPetNameFlow(petId: String, defaultName: String): Flow<String> {
         return settingsDataStore.getPetNameFlow(petId, defaultName)

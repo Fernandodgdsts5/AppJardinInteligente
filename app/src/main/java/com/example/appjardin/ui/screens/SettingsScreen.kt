@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import com.example.appjardin.R
 import com.example.appjardin.data.local.PlantEntity
+import com.example.appjardin.model.GameConfig
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.Telemetry
 import com.example.appjardin.ui.theme.*
@@ -598,24 +599,138 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
         // Locked Pet Unlock Dialog
         if (lockedPetToUnlock != null) {
             val pet = lockedPetToUnlock!!
+            val coins by viewModel.coins.collectAsStateWithLifecycle()
+            val exp by viewModel.exp.collectAsStateWithLifecycle()
+            val level by viewModel.level.collectAsStateWithLifecycle()
+
+            val (reqCoins, reqExp, reqDays) = when (pet) {
+                Pet.HORMIGA -> Triple(GameConfig.LUNA_COINS, GameConfig.LUNA_EXP, 0)
+                Pet.CHANCHITO -> Triple(GameConfig.TROLL_COINS, GameConfig.TROLL_EXP, 0)
+                Pet.ABEJA -> Triple(GameConfig.MIEL_COINS, GameConfig.MIEL_EXP, 0)
+                Pet.REYGEKO -> Triple(GameConfig.OSCAR_COINS, GameConfig.OSCAR_EXP, GameConfig.OSCAR_DAYS)
+                else -> Triple(0, 0, 0)
+            }
+
+            val canAfford = when (pet) {
+                Pet.HORMIGA, Pet.CHANCHITO -> coins >= reqCoins || exp >= reqExp
+                Pet.ABEJA -> coins >= reqCoins && exp >= reqExp
+                Pet.REYGEKO -> level >= reqDays && coins >= reqCoins && exp >= reqExp
+                else -> true
+            }
+
             AlertDialog(
                 onDismissRequest = { lockedPetToUnlock = null },
-                title = { Text(stringResource(R.string.unlock_mission_dialog_title), fontWeight = FontWeight.Bold) },
-                text = { Text(stringResource(R.string.unlock_mission_dialog_text, pet.defaultName)) },
+                title = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Image(
+                            painter = painterResource(id = pet.getDrawable(PetMood.FELIZ)),
+                            contentDescription = pet.speciesName,
+                            modifier = Modifier.size(90.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = "Desbloquear a ${pet.defaultName}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (pet == Pet.REYGEKO) {
+                            val daysProg = (level.toFloat() / reqDays.toFloat()).coerceIn(0f, 1f)
+                            Text("Días de uso: $level / $reqDays", fontSize = 12.sp, color = Color.Gray)
+                            LinearProgressIndicator(
+                                progress = { daysProg },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                color = activeColor,
+                                trackColor = Color.LightGray.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        if (reqCoins > 0) {
+                            val coinsProg = (coins.toFloat() / reqCoins.toFloat()).coerceIn(0f, 1f)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Image(painter = painterResource(id = R.drawable.coin_single), contentDescription = null, modifier = Modifier.size(16.dp))
+                                Text("Monedas: $coins / $reqCoins", fontSize = 12.sp, color = Color.Gray)
+                            }
+                            LinearProgressIndicator(
+                                progress = { coinsProg },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                color = activeColor,
+                                trackColor = Color.LightGray.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        if (reqExp > 0) {
+                            val expProg = (exp.toFloat() / reqExp.toFloat()).coerceIn(0f, 1f)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Image(painter = painterResource(id = R.drawable.exp_icon), contentDescription = null, modifier = Modifier.size(16.dp))
+                                Text("Experiencia: $exp / $reqExp", fontSize = 12.sp, color = Color.Gray)
+                            }
+                            LinearProgressIndicator(
+                                progress = { expProg },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                color = activeColor,
+                                trackColor = Color.LightGray.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        val requirementText = when (pet) {
+                            Pet.HORMIGA, Pet.CHANCHITO -> "Requiere $reqCoins monedas o $reqExp exp"
+                            Pet.ABEJA -> "Requiere $reqCoins monedas y $reqExp exp"
+                            Pet.REYGEKO -> "Requiere $reqDays días, $reqCoins monedas y $reqExp exp"
+                            else -> ""
+                        }
+                        Text(text = requirementText, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = DarkText)
+                    }
+                },
                 confirmButton = {
                     Button(
                         onClick = {
-                            lockedPetToUnlock = null
-                            onNavigateToMissions()
+                            if (canAfford) {
+                                when (pet) {
+                                    Pet.HORMIGA, Pet.CHANCHITO -> {
+                                        if (coins >= reqCoins) viewModel.deductResources(reqCoins, 0)
+                                        else viewModel.deductResources(0, reqExp)
+                                    }
+                                    Pet.ABEJA, Pet.REYGEKO -> {
+                                        viewModel.deductResources(reqCoins, reqExp)
+                                    }
+                                    else -> {}
+                                }
+                                viewModel.unlockPet(pet.id)
+                                lockedPetToUnlock = null
+                                Toast.makeText(context, "¡${pet.defaultName} desbloqueado!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Recursos insuficientes", Toast.LENGTH_SHORT).show()
+                            }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = activeColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = activeColor),
+                        enabled = canAfford
                     ) {
-                        Text(stringResource(R.string.btn_go), color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Obtener", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { lockedPetToUnlock = null }) {
-                        Text(stringResource(R.string.btn_cancel), color = Color.Gray)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                lockedPetToUnlock = null
+                                onNavigateToMissions()
+                            }
+                        ) {
+                            Text("Ir a Misiones", color = activeColor, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { lockedPetToUnlock = null }) {
+                            Text("Cancelar", color = Color.Gray)
+                        }
                     }
                 }
             )

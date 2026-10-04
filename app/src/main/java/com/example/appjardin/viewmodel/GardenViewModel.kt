@@ -94,6 +94,14 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         .catch { Log.e("GardenViewModel", "Error fetching unlocked pets", it); emit(setOf("larva", "gusano")) }
         .stateIn(viewModelScope, SharingStarted.Lazily, setOf("larva", "gusano"))
 
+    val diagnosticsCount: StateFlow<Int> = repository.diagnosticsCountFlow
+        .catch { Log.e("GardenViewModel", "Error fetching diagnostics count", it); emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val plantPhotoSet: StateFlow<Boolean> = repository.plantPhotoSetFlow
+        .catch { Log.e("GardenViewModel", "Error fetching plant photo flag", it); emit(false) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
     private val _selectedSessionIds = MutableStateFlow<Set<Int>>(emptySet())
     val selectedSessionIds: StateFlow<Set<Int>> = _selectedSessionIds
 
