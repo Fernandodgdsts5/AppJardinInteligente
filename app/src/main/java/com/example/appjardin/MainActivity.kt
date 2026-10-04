@@ -338,7 +338,12 @@ fun MainAppContent(
                         onNavigateToSettings = { bottomNavController.navigate("settings") }
                     )
                 }
-                composable("missions") { MissionsScreen() }
+                composable("missions") { 
+                    MissionsScreen(
+                        viewModel = viewModel,
+                        onNavigateToSettingsPets = { bottomNavController.navigate("settings") }
+                    ) 
+                }
                 composable("history") { HistoryScreen(viewModel) }
                 composable("settings") { 
                     SettingsScreen(

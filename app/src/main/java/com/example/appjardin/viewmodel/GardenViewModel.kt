@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -76,6 +78,22 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     private val _selectedPlant = MutableStateFlow<PlantEntity?>(null)
     val selectedPlant: StateFlow<PlantEntity?> = _selectedPlant
 
+    val coins: StateFlow<Int> = repository.coinsFlow
+        .catch { Log.e("GardenViewModel", "Error fetching coins", it); emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val exp: StateFlow<Int> = repository.expFlow
+        .catch { Log.e("GardenViewModel", "Error fetching exp", it); emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val level: StateFlow<Int> = repository.levelFlow
+        .catch { Log.e("GardenViewModel", "Error fetching level", it); emit(1) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 1)
+
+    val unlockedPets: StateFlow<Set<String>> = repository.unlockedPetsFlow
+        .catch { Log.e("GardenViewModel", "Error fetching unlocked pets", it); emit(setOf("larva", "gusano")) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, setOf("larva", "gusano"))
+
     private val _selectedSessionIds = MutableStateFlow<Set<Int>>(emptySet())
     val selectedSessionIds: StateFlow<Set<Int>> = _selectedSessionIds
 
@@ -108,6 +126,8 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.insertDefaultPlantsIfEmpty()
+            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            repository.updateLoginStreak(todayStr)
         }
         
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
@@ -236,6 +256,24 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun updatePlant(plant: PlantEntity, newImagePath: String?) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.updatePlant(plant, newImagePath)
+        }
+    }
+
+    fun addRewards(coins: Int, exp: Int) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.addRewards(coins, exp)
+        }
+    }
+
+    fun unlockPet(petId: String) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.unlockPet(petId)
+        }
+    }
+
+    fun setMissionClaimed(missionId: String, claimed: Boolean) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.setMissionClaimed(missionId, claimed)
         }
     }
 

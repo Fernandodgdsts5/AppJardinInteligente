@@ -25,6 +25,11 @@ class Repository(private val context: Context) {
     val selectedPlantIdFlow: Flow<Int> = settingsDataStore.selectedPlantIdFlow
     val selectedPetIdFlow: Flow<String> = settingsDataStore.selectedPetIdFlow
 
+    val coinsFlow: Flow<Int> = settingsDataStore.coinsFlow
+    val expFlow: Flow<Int> = settingsDataStore.expFlow
+    val levelFlow: Flow<Int> = settingsDataStore.levelFlow
+    val unlockedPetsFlow: Flow<Set<String>> = settingsDataStore.unlockedPetsFlow
+
     fun getPetNameFlow(petId: String, defaultName: String): Flow<String> {
         return settingsDataStore.getPetNameFlow(petId, defaultName)
     }
@@ -144,6 +149,38 @@ class Repository(private val context: Context) {
             settingsDataStore.resetPetName(petId)
         } catch (e: Exception) {
             Log.e("Pet", "Error resetting pet name", e)
+        }
+    }
+
+    suspend fun addRewards(coins: Int, exp: Int) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.addRewards(coins, exp)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error adding rewards", e)
+        }
+    }
+
+    suspend fun unlockPet(petId: String) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.unlockPet(petId)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error unlocking pet", e)
+        }
+    }
+
+    suspend fun setMissionClaimed(missionId: String, claimed: Boolean) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.setMissionClaimed(missionId, claimed)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error setting mission claimed", e)
+        }
+    }
+
+    suspend fun updateLoginStreak(todayStr: String) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.updateLoginStreak(todayStr)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error updating login streak", e)
         }
     }
     
