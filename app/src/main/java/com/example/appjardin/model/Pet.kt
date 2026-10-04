@@ -64,7 +64,7 @@ enum class Pet(
     LARVA(
         id = "larva",
         speciesName = "Larva",
-        defaultName = "Tito",
+        defaultName = "Gringo",
         moodDrawables = mapOf(
             PetMood.ASUSTADO to R.drawable.pet_larva_asustado,
             PetMood.ENOJADO to R.drawable.pet_larva_enojado,

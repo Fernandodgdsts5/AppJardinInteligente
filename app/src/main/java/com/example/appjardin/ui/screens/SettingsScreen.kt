@@ -104,6 +104,8 @@ fun SettingsScreen(viewModel: GardenViewModel) {
     // Plant detail bottom sheet state surviving rotation via ID
     var plantDetailId by rememberSaveable { mutableStateOf<Int?>(null) }
 
+    val scrollState = rememberScrollState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -126,7 +128,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -311,6 +313,12 @@ fun SettingsScreen(viewModel: GardenViewModel) {
 
             LaunchedEffect(selectedPet.id) {
                 isEditingPetName = false
+            }
+
+            LaunchedEffect(isPetExpanded) {
+                if (isPetExpanded) {
+                    scrollState.animateScrollTo(scrollState.maxValue)
+                }
             }
 
             Card(
@@ -614,7 +622,7 @@ fun PlantSelectionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(90.dp)
+            .height(135.dp)
             .clickable { onCardClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
