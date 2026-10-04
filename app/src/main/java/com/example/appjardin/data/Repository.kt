@@ -6,11 +6,14 @@ import com.example.appjardin.data.datastore.SettingsDataStore
 import com.example.appjardin.data.local.AppDatabase
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.data.local.SessionEntity
+import com.example.appjardin.model.RewardType
 import com.example.appjardin.util.PlantImageStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import java.text.SimpleDateFormat
+import java.util.*
 
 class Repository(private val context: Context) {
     private val database = AppDatabase.getDatabase(context)
@@ -30,36 +33,94 @@ class Repository(private val context: Context) {
     val levelFlow: Flow<Int> = settingsDataStore.levelFlow
     val unlockedPetsFlow: Flow<Set<String>> = settingsDataStore.unlockedPetsFlow
     val diagnosticsCountFlow: Flow<Int> = settingsDataStore.diagnosticsCountFlow
+    val manualWateringsCountFlow: Flow<Int> = settingsDataStore.manualWateringsCountFlow
+    val thresholdEditsCountFlow: Flow<Int> = settingsDataStore.thresholdEditsCountFlow
+    val petSelectionChangesCountFlow: Flow<Int> = settingsDataStore.petSelectionChangesCountFlow
+    val coinsEarnedTotalFlow: Flow<Int> = settingsDataStore.coinsEarnedTotalFlow
+    val coinsSpentPetTotalFlow: Flow<Int> = settingsDataStore.coinsSpentPetTotalFlow
     val plantPhotoSetFlow: Flow<Boolean> = settingsDataStore.plantPhotoSetFlow
+    val chestsOpenedCountFlow: Flow<Int> = settingsDataStore.chestsOpenedCountFlow
+    val bleConnectedOnceFlow: Flow<Boolean> = settingsDataStore.bleConnectedOnceFlow
 
     fun getPetNameFlow(petId: String, defaultName: String): Flow<String> {
         return settingsDataStore.getPetNameFlow(petId, defaultName)
     }
 
-    fun getMissionClaimedFlow(missionId: String): Flow<Boolean> {
-        return settingsDataStore.getMissionClaimedFlow(missionId)
+    fun getMissionClaimedFlow(missionId: String, isDaily: Boolean, dateStr: String): Flow<Boolean> {
+        return settingsDataStore.getMissionClaimedFlow(missionId, isDaily, dateStr)
     }
 
-    suspend fun insertDefaultPlantsIfEmpty() = withContext(Dispatchers.IO) {
+    fun getDailyActionFlow(actionName: String, dateStr: String): Flow<Boolean> {
+        return settingsDataStore.getDailyActionFlow(actionName, dateStr)
+    }
+
+    suspend fun initializeGameOnStartup(): Int = withContext(Dispatchers.IO) {
+        var correctedCount = 0
         try {
             settingsDataStore.checkAndMigrateLegacyPetName()
+            correctedCount = settingsDataStore.checkCatalogVersionAndSanitize()
+            Log.d("Repository", "Catalog sanitization correction count: $correctedCount")
+
+            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            settingsDataStore.updateLoginDatesAndLevel(todayStr)
+
             val defaultsSeeded = settingsDataStore.defaultsSeededFlow.first()
             val count = plantDao.getCount()
             if (!defaultsSeeded) {
                 if (count == 0) {
                     val defaults = listOf(
-                        PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80, defaultKey = "tomate"),
-                        PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70, defaultKey = "geranio"),
-                        PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75, defaultKey = "rosa"),
-                        PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90, defaultKey = "helecho")
+                        PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80, defaultKey = "tomate", isUserCreated = false),
+                        PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70, defaultKey = "geranio", isUserCreated = false),
+                        PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75, defaultKey = "rosa", isUserCreated = false),
+                        PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90, defaultKey = "helecho", isUserCreated = false)
                     )
                     plantDao.insertPlants(defaults)
                 }
                 settingsDataStore.setDefaultsSeeded(true)
             }
         } catch (e: Exception) {
-            Log.e("Repository", "Error inserting default plants", e)
+            Log.e("Repository", "Error initializing game on startup", e)
         }
+        correctedCount
+    }
+
+    suspend fun claimMissionAtomic(
+        missionId: String,
+        rewardType: RewardType,
+        rewardAmount: Int,
+        rewardExp: Int,
+        isDaily: Boolean,
+        dateStr: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        settingsDataStore.claimMissionAtomic(missionId, rewardType, rewardAmount, rewardExp, isDaily, dateStr)
+    }
+
+    suspend fun buyPetAtomic(petId: String, costCoins: Int, costExp: Int): Boolean = withContext(Dispatchers.IO) {
+        settingsDataStore.buyPetAtomic(petId, costCoins, costExp)
+    }
+
+    suspend fun recordDailyAction(actionName: String, dateStr: String) = withContext(Dispatchers.IO) {
+        settingsDataStore.recordDailyAction(actionName, dateStr)
+    }
+
+    suspend fun incrementDiagnostics() = withContext(Dispatchers.IO) {
+        settingsDataStore.incrementDiagnostics()
+    }
+
+    suspend fun incrementManualWaterings() = withContext(Dispatchers.IO) {
+        settingsDataStore.incrementManualWaterings()
+    }
+
+    suspend fun incrementThresholdEdits() = withContext(Dispatchers.IO) {
+        settingsDataStore.incrementThresholdEdits()
+    }
+
+    suspend fun incrementPetSelectionChanges() = withContext(Dispatchers.IO) {
+        settingsDataStore.incrementPetSelectionChanges()
+    }
+
+    suspend fun setBleConnectedOnce() = withContext(Dispatchers.IO) {
+        settingsDataStore.setBleConnectedOnce()
     }
 
     suspend fun deletePlant(plant: PlantEntity) = withContext(Dispatchers.IO) {
@@ -182,33 +243,14 @@ class Repository(private val context: Context) {
         }
     }
 
-    suspend fun setMissionClaimed(missionId: String, claimed: Boolean) = withContext(Dispatchers.IO) {
-        try {
-            settingsDataStore.setMissionClaimed(missionId, claimed)
-        } catch (e: Exception) {
-            Log.e("Repository", "Error setting mission claimed", e)
-        }
-    }
-
-    suspend fun updateLoginStreak(todayStr: String) = withContext(Dispatchers.IO) {
-        try {
-            settingsDataStore.updateLoginStreak(todayStr)
-        } catch (e: Exception) {
-            Log.e("Repository", "Error updating login streak", e)
-        }
-    }
-    
     suspend fun recordSessionStart(plantId: Int, plantName: String, humidity: Float, minHumidity: Float, maxHumidity: Float) = withContext(Dispatchers.IO) {
         try {
             val lastDisconnectTime = settingsDataStore.lastDisconnectTimeFlow.first()
             val currentTime = System.currentTimeMillis()
             val timeSinceLastDisconnect = currentTime - lastDisconnectTime
             
-            Log.d("Repository", "Evaluando sesión: tiempoActual=$currentTime, ultimaDesconexion=$lastDisconnectTime, diff=$timeSinceLastDisconnect ms")
-            
             val lastSession = sessionDao.getLastSession()
             
-            // Check if last disconnect was within 1 hour AND the last session belongs to the same plant
             if (lastSession != null && lastDisconnectTime > 0L && timeSinceLastDisconnect <= 3600000L && lastSession.plantId == plantId) {
                 val newHumidities = "${lastSession.humidities},$humidity"
                 val updated = lastSession.copy(
@@ -218,7 +260,6 @@ class Repository(private val context: Context) {
                     humedadMasAlta = maxOf(lastSession.humedadMasAlta, maxHumidity)
                 )
                 sessionDao.updateSession(updated)
-                Log.d("Repository", "-> Continuar sesión anterior: UPDATE sobre ID=${updated.id}")
             } else {
                 val newSession = SessionEntity(
                     plantId = plantId,
@@ -230,7 +271,6 @@ class Repository(private val context: Context) {
                     humedadMasAlta = maxHumidity
                 )
                 sessionDao.insertSession(newSession)
-                Log.d("Repository", "-> Nueva sesión: CREAR nuevo registro para $plantName (Pasó más de 1 hora o planta distinta)")
             }
         } catch (e: Exception) {
             Log.e("Repository", "Error starting session", e)
@@ -239,9 +279,8 @@ class Repository(private val context: Context) {
 
     suspend fun recordSessionEnd(humidity: Float, minHumidity: Float, maxHumidity: Float) = withContext(Dispatchers.IO) {
         try {
-            Log.d("Repository", "END RECORDING: humidity=$humidity")
             val currentTime = System.currentTimeMillis()
-            settingsDataStore.saveLastDisconnectTime(currentTime) // Save exact disconnect time
+            settingsDataStore.saveLastDisconnectTime(currentTime)
             
             val lastSession = sessionDao.getLastSession()
             if (lastSession != null) {
@@ -253,7 +292,6 @@ class Repository(private val context: Context) {
                     humedadMasAlta = maxOf(lastSession.humedadMasAlta, maxHumidity)
                 )
                 sessionDao.updateSession(updated)
-                Log.d("Repository", "Completed existing session: ${updated.id}, disconnect time saved.")
             }
         } catch (e: Exception) {
             Log.e("Repository", "Error ending session", e)
@@ -263,7 +301,6 @@ class Repository(private val context: Context) {
     suspend fun deleteSession(sessionId: Int) = withContext(Dispatchers.IO) {
         try {
             sessionDao.deleteSessionById(sessionId)
-            Log.d("Repository", "Deleted session ID: $sessionId")
         } catch (e: Exception) {
             Log.e("Repository", "Error deleting session", e)
         }
@@ -272,7 +309,6 @@ class Repository(private val context: Context) {
     suspend fun deleteSessions(sessionIds: List<Int>) = withContext(Dispatchers.IO) {
         try {
             sessionDao.deleteSessionsByIds(sessionIds)
-            Log.d("Repository", "Deleted sessions IDs: $sessionIds")
         } catch (e: Exception) {
             Log.e("Repository", "Error deleting sessions", e)
         }

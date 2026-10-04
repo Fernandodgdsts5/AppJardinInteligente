@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +44,24 @@ fun MissionsScreen(
     val exp by viewModel.exp.collectAsStateWithLifecycle()
     val level by viewModel.level.collectAsStateWithLifecycle()
     val unlockedPets by viewModel.unlockedPets.collectAsStateWithLifecycle()
+    val plants by viewModel.allPlants.collectAsStateWithLifecycle()
+    val sessions by viewModel.allSessions.collectAsStateWithLifecycle()
+    val petNames by viewModel.petNames.collectAsStateWithLifecycle()
+
+    val diagnosticsCount by viewModel.diagnosticsCount.collectAsStateWithLifecycle()
+    val manualWateringsCount by viewModel.manualWateringsCount.collectAsStateWithLifecycle()
+    val thresholdEditsCount by viewModel.thresholdEditsCount.collectAsStateWithLifecycle()
+    val petSelectionChangesCount by viewModel.petSelectionChangesCount.collectAsStateWithLifecycle()
+    val coinsEarnedTotal by viewModel.coinsEarnedTotal.collectAsStateWithLifecycle()
+    val coinsSpentPetTotal by viewModel.coinsSpentPetTotal.collectAsStateWithLifecycle()
+    val chestsOpenedCount by viewModel.chestsOpenedCount.collectAsStateWithLifecycle()
+    val bleConnectedOnce by viewModel.bleConnectedOnce.collectAsStateWithLifecycle()
+
+    val manualWateredToday by viewModel.getDailyActionFlow("manual_watering").collectAsStateWithLifecycle(initialValue = false)
+    val happyPlantToday by viewModel.getDailyActionFlow("happy_plant").collectAsStateWithLifecycle(initialValue = false)
+    val diagnosticsToday by viewModel.getDailyActionFlow("diagnosis").collectAsStateWithLifecycle(initialValue = false)
+    val adviceShownToday by viewModel.getDailyActionFlow("advice_shown").collectAsStateWithLifecycle(initialValue = false)
+    val historyOpenedToday by viewModel.getDailyActionFlow("history_opened").collectAsStateWithLifecycle(initialValue = false)
 
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
@@ -61,7 +78,24 @@ fun MissionsScreen(
     var selectedMissionDetail by remember { mutableStateOf<MissionDef?>(null) }
     var chestRewardDialogData by remember { mutableStateOf<String?>(null) }
 
-    // ~50 Missions Catalog
+    val adequateSessionsCount = remember(sessions, plants) {
+        sessions.count { s ->
+            val p = plants.find { it.id == s.plantId }
+            if (p != null) {
+                val finalHum = s.humidities.split(",").lastOrNull()?.toFloatOrNull() ?: 0f
+                finalHum >= p.humedadBuena && finalHum <= p.humedadExceso
+            } else false
+        }
+    }
+
+    val customImageCount = remember(plants) {
+        plants.count { !it.imagePath.isNullOrBlank() }
+    }
+
+    val renamedPetsCount = remember(petNames) {
+        petNames.count { (Pet.entries.find { p -> p.id == it.key }?.defaultName) != it.value }
+    }
+
     val missions = remember {
         listOf(
             // Daily
@@ -111,10 +145,6 @@ fun MissionsScreen(
             // Pets
             MissionDef("m60", "Mi mascota", "Personaliza el nombre de cualquier mascota.", false, 1, "100 Monedas", RewardType.COINS, rewardAmount = 100, rewardRes = R.drawable.coin_stack),
             MissionDef("m61", "Cariñoso", "Cambia de mascota seleccionada 3 veces.", false, 3, "90 Monedas", RewardType.COINS, rewardAmount = 90, rewardRes = R.drawable.coin_stack),
-            MissionDef("m62", "Desbloquea a Luna", "Desbloquea a la mascota Luna (Hormiga).", false, 1, "Cofre Lunar", RewardType.PET, rewardRes = R.drawable.chest_c4),
-            MissionDef("m63", "Desbloquea a Troll", "Desbloquea al chanchito Troll.", false, 1, "Mascota Troll", RewardType.PET, rewardRes = R.drawable.pet_chanchito_feliz),
-            MissionDef("m64", "Desbloquea a Miel", "Desbloquea a la abeja Miel.", false, 1, "Mascota Miel", RewardType.PET, rewardRes = R.drawable.pet_abeja_feliz),
-            MissionDef("m65", "Desbloquea a Oscar", "Desbloquea al reygeko Oscar.", false, 1, "Mascota Oscar", RewardType.PET, rewardRes = R.drawable.pet_reygeko_feliz),
 
             // Economy
             MissionDef("m70", "Ahorrador I", "Acumula 1,000 monedas.", false, 1000, "Cofre Dorado", RewardType.CHEST, rewardRes = R.drawable.chest_c3),
@@ -244,7 +274,7 @@ fun MissionsScreen(
                 )
             }
 
-            // Reygeko Fixed Card at the top of missions list
+            // Reygeko Fixed Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -292,9 +322,13 @@ fun MissionsScreen(
                             Button(
                                 onClick = {
                                     if (canUnlock) {
-                                        viewModel.deductResources(GameConfig.OSCAR_COINS, GameConfig.OSCAR_EXP)
-                                        viewModel.unlockPet(reygeko.id)
-                                        Toast.makeText(context, "¡Has desbloqueado a Oscar!", Toast.LENGTH_SHORT).show()
+                                        viewModel.buyPetAtomic(reygeko.id, GameConfig.OSCAR_COINS, GameConfig.OSCAR_EXP) { success ->
+                                            if (success) {
+                                                Toast.makeText(context, "¡Has desbloqueado a Oscar!", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Recursos insuficientes", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     } else {
                                         Toast.makeText(context, "Aún no cumples los requisitos", Toast.LENGTH_SHORT).show()
                                     }
@@ -310,7 +344,6 @@ fun MissionsScreen(
                         }
                     }
 
-                    // 3 Horizontal Progress Bars
                     val daysProgress = (level.toFloat() / GameConfig.OSCAR_DAYS.toFloat()).coerceIn(0f, 1f)
                     val coinsProgress = (coins.toFloat() / GameConfig.OSCAR_COINS.toFloat()).coerceIn(0f, 1f)
                     val expProgress = (exp.toFloat() / GameConfig.OSCAR_EXP.toFloat()).coerceIn(0f, 1f)
@@ -356,7 +389,7 @@ fun MissionsScreen(
                 color = DarkText
             )
 
-            // Missions List with stable keys
+            // Missions List
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,69 +400,57 @@ fun MissionsScreen(
                     items = missions,
                     key = { mission -> mission.id }
                 ) { mission ->
-                    val isClaimed by viewModel.getMissionClaimedFlow(mission.id).collectAsStateWithLifecycle(initialValue = false)
+                    val isClaimed by viewModel.getMissionClaimedFlow(mission.id, mission.isDaily).collectAsStateWithLifecycle(initialValue = false)
+                    
+                    val m2Completed = if (manualWateredToday) 1 else 0
+                    val m3Completed = if (happyPlantToday) 1 else 0
+                    val m4Completed = if (diagnosticsToday) 1 else 0
+                    val m5Completed = m2Completed + m3Completed + m4Completed
+
+                    val progress = when (mission.id) {
+                        "m1" -> if (isClaimed) 1f else 0f
+                        "m2" -> if (manualWateredToday) 1f else 0f
+                        "m3" -> if (happyPlantToday) 1f else 0f
+                        "m4" -> if (diagnosticsToday) 1f else 0f
+                        "m5" -> (m5Completed.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m6" -> if (adviceShownToday) 1f else 0f
+                        "m7" -> if (historyOpenedToday) 1f else 0f
+                        in listOf("m10", "m11", "m12", "m13", "m14") -> (adequateSessionsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        in listOf("m20", "m21", "m22", "m23", "m24") -> (diagnosticsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        in listOf("m30", "m31", "m32") -> (manualWateringsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        in listOf("m40", "m41", "m42", "m43", "m44", "m45", "m46", "m47") -> (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m50", "m53" -> (plants.size.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m51" -> (customImageCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m52" -> (thresholdEditsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m60" -> (renamedPetsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m61" -> (petSelectionChangesCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        in listOf("m70", "m71", "m72") -> (coinsEarnedTotal.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m73" -> if (coinsSpentPetTotal > 0) 1f else 0f
+                        in listOf("m80", "m81") -> (chestsOpenedCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m90" -> if (bleConnectedOnce) 1f else 0f
+                        else -> 0f
+                    }
+
                     MissionCard(
                         mission = mission,
-                        level = level,
+                        progress = progress,
                         activeColor = activeColor,
                         isClaimed = isClaimed,
                         onClick = { selectedMissionDetail = mission },
                         onClaim = {
-                            when (mission.rewardType) {
-                                RewardType.COINS -> {
-                                    viewModel.addRewards(mission.rewardAmount, 0)
-                                    viewModel.setMissionClaimed(mission.id, true)
-                                    Toast.makeText(context, "¡Recompensa reclamada!", Toast.LENGTH_SHORT).show()
-                                }
-                                RewardType.BOTH -> {
-                                    viewModel.addRewards(mission.rewardAmount, mission.rewardExp)
-                                    viewModel.setMissionClaimed(mission.id, true)
-                                    Toast.makeText(context, "¡Recompensa reclamada!", Toast.LENGTH_SHORT).show()
-                                }
-                                RewardType.CHEST -> {
-                                    val rewardStr = when (mission.rewardRes) {
-                                        R.drawable.chest_c1 -> {
-                                            val c = (GameConfig.CHEST_C1_COINS).random()
-                                            viewModel.addRewards(c, 0)
-                                            "¡Has obtenido $c monedas!"
-                                        }
-                                        R.drawable.chest_c2 -> {
-                                            val c = (GameConfig.CHEST_C2_COINS).random()
-                                            val e = (GameConfig.CHEST_C2_EXP).random()
-                                            viewModel.addRewards(c, e)
-                                            "¡Has obtenido $c monedas y $e exp!"
-                                        }
-                                        R.drawable.chest_c3 -> {
-                                            val c = (GameConfig.CHEST_C3_COINS).random()
-                                            viewModel.addRewards(c, 0)
-                                            "¡Has obtenido $c monedas!"
-                                        }
-                                        R.drawable.chest_c5 -> {
-                                            val c = (GameConfig.CHEST_C5_COINS).random()
-                                            val e = (GameConfig.CHEST_C5_EXP).random()
-                                            viewModel.addRewards(c, e)
-                                            "¡Has obtenido $c monedas y $e exp!"
-                                        }
-                                        else -> "¡Cofre abierto!"
+                            viewModel.claimMission(
+                                missionId = mission.id,
+                                rewardType = mission.rewardType,
+                                rewardAmount = mission.rewardAmount,
+                                rewardExp = mission.rewardExp,
+                                isDaily = mission.isDaily
+                            ) { success ->
+                                if (success) {
+                                    if (mission.rewardType == RewardType.CHEST) {
+                                        chestRewardDialogData = "¡Cofre abierto con éxito!"
+                                    } else {
+                                        Toast.makeText(context, "¡Recompensa reclamada!", Toast.LENGTH_SHORT).show()
                                     }
-                                    viewModel.setMissionClaimed(mission.id, true)
-                                    chestRewardDialogData = rewardStr
-                                }
-                                RewardType.PET -> {
-                                    if (mission.id == "m62") {
-                                        viewModel.unlockPet("hormiga")
-                                        chestRewardDialogData = "¡Has desbloqueado a la mascota Luna!"
-                                    } else if (mission.id == "m63") {
-                                        viewModel.unlockPet("chanchito")
-                                        chestRewardDialogData = "¡Has desbloqueado al chanchito Troll!"
-                                    } else if (mission.id == "m64") {
-                                        viewModel.unlockPet("abeja")
-                                        chestRewardDialogData = "¡Has desbloqueado a la abeja Miel!"
-                                    } else if (mission.id == "m65") {
-                                        viewModel.unlockPet("reygeko")
-                                        chestRewardDialogData = "¡Has desbloqueado al reygeko Oscar!"
-                                    }
-                                    viewModel.setMissionClaimed(mission.id, true)
                                 }
                             }
                         }
@@ -439,7 +460,6 @@ fun MissionsScreen(
         }
     }
 
-    // Chest reward dialog
     if (chestRewardDialogData != null) {
         AlertDialog(
             onDismissRequest = { chestRewardDialogData = null },
@@ -456,7 +476,6 @@ fun MissionsScreen(
         )
     }
 
-    // Mission Detail Bottom Sheet
     if (selectedMissionDetail != null) {
         val mission = selectedMissionDetail!!
         ModalBottomSheet(
@@ -503,13 +522,12 @@ fun MissionsScreen(
 @Composable
 fun MissionCard(
     mission: MissionDef,
-    level: Int,
+    progress: Float,
     activeColor: Color,
     isClaimed: Boolean,
     onClick: () -> Unit,
     onClaim: () -> Unit
 ) {
-    val progress = if (level >= mission.target) 1f else (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
     val isCompleted = progress >= 1f
 
     Card(
@@ -556,7 +574,6 @@ fun MissionCard(
                 )
             }
 
-            // Reward & Claim button
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center

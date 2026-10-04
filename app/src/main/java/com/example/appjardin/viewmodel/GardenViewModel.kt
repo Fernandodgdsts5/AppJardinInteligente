@@ -12,6 +12,7 @@ import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.model.Config
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.Pet
+import com.example.appjardin.model.RewardType
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.time.Duration.Companion.seconds
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class GardenViewModel(application: Application) : AndroidViewModel(application) {
@@ -98,8 +98,36 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         .catch { Log.e("GardenViewModel", "Error fetching diagnostics count", it); emit(0) }
         .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
+    val manualWateringsCount: StateFlow<Int> = repository.manualWateringsCountFlow
+        .catch { emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val thresholdEditsCount: StateFlow<Int> = repository.thresholdEditsCountFlow
+        .catch { emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val petSelectionChangesCount: StateFlow<Int> = repository.petSelectionChangesCountFlow
+        .catch { emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val coinsEarnedTotal: StateFlow<Int> = repository.coinsEarnedTotalFlow
+        .catch { emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val coinsSpentPetTotal: StateFlow<Int> = repository.coinsSpentPetTotalFlow
+        .catch { emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
     val plantPhotoSet: StateFlow<Boolean> = repository.plantPhotoSetFlow
         .catch { Log.e("GardenViewModel", "Error fetching plant photo flag", it); emit(false) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    val chestsOpenedCount: StateFlow<Int> = repository.chestsOpenedCountFlow
+        .catch { Log.e("GardenViewModel", "Error fetching chests count", it); emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val bleConnectedOnce: StateFlow<Boolean> = repository.bleConnectedOnceFlow
+        .catch { Log.e("GardenViewModel", "Error fetching ble connected flag", it); emit(false) }
         .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     private val _selectedSessionIds = MutableStateFlow<Set<Int>>(emptySet())
@@ -133,9 +161,8 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            repository.insertDefaultPlantsIfEmpty()
-            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            repository.updateLoginStreak(todayStr)
+            val corrected = repository.initializeGameOnStartup()
+            Log.d("GardenViewModel", "Startup sanitization correction count: $corrected")
         }
         
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
@@ -159,7 +186,8 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
             connectionState.collect { state ->
                 val plant = _selectedPlant.value
                 if (state == BluetoothProfile.STATE_CONNECTED) {
-                    _pumpOn.value = false // Reset optimistic state on fresh connection
+                    repository.setBleConnectedOnce()
+                    _pumpOn.value = false
                     plant?.let {
                         val config = Config(it.humedadMinima, it.humedadBuena, it.humedadExceso)
                         delay(1000L)
@@ -167,7 +195,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                         waitingForFirstTelemetry = true
                     }
                 } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
-                    _pumpOn.value = false // Reset optimistic state on disconnect
+                    _pumpOn.value = false
                     if (isRecordingSession) {
                         repository.recordSessionEnd(lastKnownHumidity, appStartMinHumidity, sessionMaxHumidity)
                         isRecordingSession = false
@@ -184,27 +212,85 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                 lastKnownHumidity = tele.humedad
                 
                 val h = tele.humedad
+                val plant = _selectedPlant.value
                 if (h in 0f..100f) {
                     if (h < appStartMinHumidity) {
                         appStartMinHumidity = h
                     }
+                    if (connectionState.value == BluetoothProfile.STATE_CONNECTED && plant != null) {
+                        val moistureState = getMoistureState(h, plant)
+                        if (moistureState == MoistureState.GOOD_MOISTURE) {
+                            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                            repository.recordDailyAction("happy_plant", todayStr)
+                        }
+                    }
                 }
                 sessionMaxHumidity = maxOf(sessionMaxHumidity, h)
                 
-                // Add Log to verify optimistic vs real state
                 Log.d("JardinBLE", "bomba optimista=$prevOptimistic vs bomba real telemetría=${tele.bomba}, humedad=${tele.humedad}")
                 
-                val plant = _selectedPlant.value
                 if (plant != null && waitingForFirstTelemetry) {
-                    if (h in 0f..100f && h < appStartMinHumidity) {
-                        appStartMinHumidity = h
-                    }
-                    sessionMaxHumidity = maxOf(sessionMaxHumidity, h)
                     repository.recordSessionStart(plant.id, plant.name, tele.humedad, appStartMinHumidity, sessionMaxHumidity)
                     waitingForFirstTelemetry = false
                     isRecordingSession = true
                 }
             }
+        }
+    }
+
+    fun getTodayStr(): String {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    }
+
+    fun getMissionClaimedFlow(missionId: String, isDaily: Boolean): Flow<Boolean> {
+        return repository.getMissionClaimedFlow(missionId, isDaily, getTodayStr())
+    }
+
+    fun getDailyActionFlow(actionName: String): Flow<Boolean> {
+        return repository.getDailyActionFlow(actionName, getTodayStr())
+    }
+
+    fun claimMission(
+        missionId: String,
+        rewardType: RewardType,
+        rewardAmount: Int,
+        rewardExp: Int,
+        isDaily: Boolean,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            val success = repository.claimMissionAtomic(missionId, rewardType, rewardAmount, rewardExp, isDaily, getTodayStr())
+            withContext(Dispatchers.Main) {
+                onResult(success)
+            }
+        }
+    }
+
+    fun buyPetAtomic(petId: String, costCoins: Int, costExp: Int, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            val success = repository.buyPetAtomic(petId, costCoins, costExp)
+            withContext(Dispatchers.Main) {
+                onResult(success)
+            }
+        }
+    }
+
+    fun onDiagnosisConfirmed() {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.incrementDiagnostics()
+            repository.recordDailyAction("diagnosis", getTodayStr())
+        }
+    }
+
+    fun onAdviceShown() {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.recordDailyAction("advice_shown", getTodayStr())
+        }
+    }
+
+    fun onHistoryEntered() {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.recordDailyAction("history_opened", getTodayStr())
         }
     }
 
@@ -225,6 +311,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun selectPet(id: String) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.saveSelectedPetId(id)
+            repository.incrementPetSelectionChanges()
         }
     }
 
@@ -264,6 +351,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun updatePlant(plant: PlantEntity, newImagePath: String?) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.updatePlant(plant, newImagePath)
+            repository.incrementThresholdEdits()
         }
     }
 
@@ -282,12 +370,6 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun unlockPet(petId: String) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.unlockPet(petId)
-        }
-    }
-
-    fun setMissionClaimed(missionId: String, claimed: Boolean) {
-        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            repository.setMissionClaimed(missionId, claimed)
         }
     }
 
@@ -345,10 +427,6 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun getMissionClaimedFlow(missionId: String): Flow<Boolean> {
-        return repository.getMissionClaimedFlow(missionId)
-    }
-
     fun startScan() {
         bleManager.startScan()
     }
@@ -366,9 +444,15 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     }
     
     fun togglePump(turnOn: Boolean) {
-        _pumpOn.value = turnOn // Actualización INSTANTÁNEA (optimista)
+        _pumpOn.value = turnOn
         val action = if (turnOn) "regar" else "detener"
         Log.d("JardinBLE", "Enviando comando: $action")
+        if (turnOn && connectionState.value == BluetoothProfile.STATE_CONNECTED) {
+            viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+                repository.recordDailyAction("manual_watering", getTodayStr())
+                repository.incrementManualWaterings()
+            }
+        }
         bleManager.sendWateringAction(action)
     }
 

@@ -61,6 +61,10 @@ fun HistoryScreen(viewModel: GardenViewModel) {
     val isSelectionMode by viewModel.isSessionSelectionMode.collectAsStateWithLifecycle()
     val activeSessionId by viewModel.activeSessionId.collectAsStateWithLifecycle()
 
+    LaunchedEffect(Unit) {
+        viewModel.onHistoryEntered()
+    }
+
     val humidity = telemetry?.humedad ?: 0f
     val state = viewModel.getMoistureState(humidity, plant)
 
@@ -390,7 +394,6 @@ fun SessionHistoryItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left text info (weight 1f) with proper spacing and no forced vertical clipping
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -462,7 +465,6 @@ fun SessionHistoryItem(
                 }
             }
 
-            // Right image (max 40% of card width, 20% smaller than previous 1:1, ContentScale.Fit)
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -542,7 +544,6 @@ fun SessionDetailBottomSheet(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Large Pet Image
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
