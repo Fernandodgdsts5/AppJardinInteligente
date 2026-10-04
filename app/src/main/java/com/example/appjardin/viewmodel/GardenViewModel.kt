@@ -149,6 +149,12 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun updatePlantImage(plantId: Int, imagePath: String?) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.updatePlantImagePath(plantId, imagePath)
+        }
+    }
+
     fun startScan() {
         bleManager.startScan()
     }

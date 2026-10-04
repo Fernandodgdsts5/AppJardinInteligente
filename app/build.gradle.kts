@@ -61,6 +61,8 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.gson)
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

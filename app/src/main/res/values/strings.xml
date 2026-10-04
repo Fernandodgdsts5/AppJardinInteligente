@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">Jardin Inteligente</string>
+    <string name="plant_min">Mín: %d%%</string>
+    <string name="plant_opt">Opt: %d%%</string>
+    <string name="plant_excess">Exceso: > %d%%</string>
+    <string name="change_image">Cambiar imagen</string>
+    <string name="take_photo">Tomar foto</string>
+    <string name="choose_gallery">Elegir de la galería</string>
+    <string name="restore_original">Restaurar imagen original</string>
+    <string name="preview_title">Vista previa de la imagen</string>
+    <string name="use_this_photo">Usar esta foto</string>
+    <string name="retry_photo">Volver a intentar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="add_image">Agregar imagen</string>
 </resources>

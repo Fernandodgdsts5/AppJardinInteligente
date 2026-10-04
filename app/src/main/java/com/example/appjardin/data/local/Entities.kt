@@ -9,7 +9,9 @@ data class PlantEntity(
     val name: String,
     val humedadMinima: Int,
     val humedadBuena: Int,
-    val humedadExceso: Int
+    val humedadExceso: Int,
+    val imagePath: String? = null,
+    val defaultKey: String? = null
 )
 
 @Entity(tableName = "sessions")

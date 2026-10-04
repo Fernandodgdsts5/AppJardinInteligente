@@ -6,6 +6,7 @@ import com.example.appjardin.data.datastore.SettingsDataStore
 import com.example.appjardin.data.local.AppDatabase
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.data.local.SessionEntity
+import com.example.appjardin.util.PlantImageStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -28,10 +29,10 @@ class Repository(private val context: Context) {
         try {
             if (plantDao.getCount() == 0) {
                 val defaults = listOf(
-                    PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80),
-                    PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70),
-                    PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75),
-                    PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90)
+                    PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80, defaultKey = "tomate"),
+                    PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70, defaultKey = "geranio"),
+                    PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75, defaultKey = "rosa"),
+                    PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90, defaultKey = "helecho")
                 )
                 plantDao.insertPlants(defaults)
             }
@@ -54,6 +55,21 @@ class Repository(private val context: Context) {
             plantDao.insertPlant(plant)
         } catch (e: Exception) {
             Log.e("Repository", "Error inserting plant", e)
+        }
+    }
+
+    suspend fun updatePlantImagePath(plantId: Int, imagePath: String?) = withContext(Dispatchers.IO) {
+        try {
+            val plant = plantDao.getPlantById(plantId)
+            if (plant != null) {
+                if (!plant.imagePath.isNullOrBlank() && plant.imagePath != imagePath) {
+                    PlantImageStorage.deleteImageFile(plant.imagePath)
+                }
+                val updated = plant.copy(imagePath = imagePath)
+                plantDao.updatePlant(updated)
+            }
+        } catch (e: Exception) {
+            Log.e("Repository", "Error updating plant image", e)
         }
     }
 
