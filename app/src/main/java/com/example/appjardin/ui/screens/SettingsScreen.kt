@@ -505,13 +505,14 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                             }
                         }
 
-                        // Reygeko double cell at the end
+                        // Reygeko double cell at the end (double height)
                         val reygeko = Pet.REYGEKO
                         val isReygekoSelected = selectedPet == reygeko
                         val reygekoEffectiveName = petNames[reygeko.id] ?: reygeko.defaultName
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .height(180.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .alpha(if (reygeko.isLocked) 0.5f else 1f)
                                 .border(
@@ -533,13 +534,13 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                                 .padding(12.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Box(
-                                    modifier = Modifier.size(70.dp)
+                                    modifier = Modifier.size(110.dp)
                                 ) {
                                     Image(
                                         painter = painterResource(id = reygeko.getDrawable(PetMood.FELIZ)),
@@ -550,7 +551,7 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                                     if (isReygekoSelected) {
                                         Box(
                                             modifier = Modifier
-                                                .size(22.dp)
+                                                .size(24.dp)
                                                 .align(Alignment.TopEnd)
                                                 .background(activeColor, CircleShape),
                                             contentAlignment = Alignment.Center
@@ -559,14 +560,14 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = "Seleccionada",
                                                 tint = Color.White,
-                                                modifier = Modifier.size(14.dp)
+                                                modifier = Modifier.size(16.dp)
                                             )
                                         }
                                     }
                                     if (reygeko.isLocked) {
                                         Box(
                                             modifier = Modifier
-                                                .size(24.dp)
+                                                .size(26.dp)
                                                 .align(Alignment.TopStart)
                                                 .background(Color.Black.copy(alpha = 0.4f), CircleShape),
                                             contentAlignment = Alignment.Center
@@ -575,28 +576,18 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                                                 imageVector = Icons.Default.Lock,
                                                 contentDescription = "Bloqueada",
                                                 tint = Color.White,
-                                                modifier = Modifier.size(14.dp)
+                                                modifier = Modifier.size(16.dp)
                                             )
                                         }
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column(
-                                    horizontalAlignment = Alignment.Start,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = reygeko.speciesName,
-                                        fontSize = 13.sp,
-                                        color = Color.Gray
-                                    )
-                                    Text(
-                                        text = reygekoEffectiveName,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = DarkText
-                                    )
-                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = reygekoEffectiveName,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkText
+                                )
                             }
                         }
                     }
