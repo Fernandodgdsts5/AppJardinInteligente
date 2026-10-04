@@ -355,7 +355,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
                         modifier = Modifier
                             .fillMaxHeight()
                             .aspectRatio(1f)
-                            .background(activeColor.copy(alpha = 0.08f)),
+                            .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
