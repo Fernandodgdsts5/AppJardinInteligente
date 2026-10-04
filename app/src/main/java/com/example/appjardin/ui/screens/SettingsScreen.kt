@@ -63,6 +63,7 @@ import com.example.appjardin.util.PlantImageStorage
 import com.example.appjardin.viewmodel.GardenViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -317,6 +318,7 @@ fun SettingsScreen(viewModel: GardenViewModel) {
 
             LaunchedEffect(isPetExpanded) {
                 if (isPetExpanded) {
+                    delay(200)
                     scrollState.animateScrollTo(scrollState.maxValue)
                 }
             }
@@ -772,16 +774,22 @@ fun PlantDetailBottomSheet(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Large Image (4:3 aspect ratio)
-            AsyncImage(
-                model = imageModel,
-                contentDescription = plant.name,
+            // Large Image (4:3 aspect ratio) with white background and ContentScale.Fit
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = plant.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
 
             // Name & Selected badge
             Row(
