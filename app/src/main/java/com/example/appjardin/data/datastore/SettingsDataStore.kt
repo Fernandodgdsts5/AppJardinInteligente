@@ -200,8 +200,12 @@ class SettingsDataStore(private val context: Context) {
     }
 
     suspend fun setMissionClaimed(missionId: String, claimed: Boolean) {
+        val key = getMissionClaimedKey(missionId)
         context.dataStore.edit { preferences ->
-            preferences[getMissionClaimedKey(missionId)] = claimed
+            val alreadyClaimed = preferences[key] ?: false
+            if (!alreadyClaimed) {
+                preferences[key] = claimed
+            }
         }
     }
 

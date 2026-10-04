@@ -34,6 +34,10 @@ class Repository(private val context: Context) {
         return settingsDataStore.getPetNameFlow(petId, defaultName)
     }
 
+    fun getMissionClaimedFlow(missionId: String): Flow<Boolean> {
+        return settingsDataStore.getMissionClaimedFlow(missionId)
+    }
+
     suspend fun insertDefaultPlantsIfEmpty() = withContext(Dispatchers.IO) {
         try {
             settingsDataStore.checkAndMigrateLegacyPetName()
@@ -157,6 +161,14 @@ class Repository(private val context: Context) {
             settingsDataStore.addRewards(coins, exp)
         } catch (e: Exception) {
             Log.e("Repository", "Error adding rewards", e)
+        }
+    }
+
+    suspend fun deductResources(coins: Int, exp: Int) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.deductResources(coins, exp)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error deducting resources", e)
         }
     }
 

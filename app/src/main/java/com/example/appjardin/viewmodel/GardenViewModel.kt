@@ -265,6 +265,12 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun deductResources(coins: Int, exp: Int) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.deductResources(coins, exp)
+        }
+    }
+
     fun unlockPet(petId: String) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.unlockPet(petId)
@@ -329,6 +335,10 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
                 onSuccess()
             }
         }
+    }
+
+    fun getMissionClaimedFlow(missionId: String): Flow<Boolean> {
+        return repository.getMissionClaimedFlow(missionId)
     }
 
     fun startScan() {

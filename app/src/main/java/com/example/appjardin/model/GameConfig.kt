@@ -1,7 +1,9 @@
 package com.example.appjardin.model
 
+import com.example.appjardin.R
+
 object GameConfig {
-    // Pet prices (ascending order)
+    // Pet prices and unlock requirements
     const val LUNA_COINS = 4000
     const val LUNA_EXP = 3000
 
@@ -23,3 +25,20 @@ object GameConfig {
     val CHEST_C5_COINS = 10000..50000
     val CHEST_C5_EXP = 10000..50000
 }
+
+enum class RewardType {
+    COINS, BOTH, CHEST, PET
+}
+
+data class MissionDef(
+    val id: String,
+    val title: String,
+    val description: String,
+    val isDaily: Boolean,
+    val target: Int,
+    val rewardTextRes: String,
+    val rewardType: RewardType,
+    val rewardAmount: Int = 0,
+    val rewardExp: Int = 0,
+    val rewardRes: Int
+)

@@ -12,7 +12,7 @@
     <string name="retry_photo">Volver a intentar</string>
     <string name="cancel">Cancelar</string>
     <string name="add_image">Agregar imagen</string>
-    <string name="selected_plant_badge">Planta seleccionada</string>
+    <string name="selected_pet_badge">Planta seleccionada</string>
     <string name="plant_type_default">Predeterminada</string>
     <string name="plant_type_custom">Personalizada</string>
     <string name="current_humidity">Humedad actual</string>
@@ -58,4 +58,10 @@
     <string name="unlock_mission_dialog_text">Completa misiones para desbloquear a %s</string>
     <string name="btn_go">Ir</string>
     <string name="btn_cancel">Cancelar</string>
+
+    <string name="chest_name_c1">Cofre Básico</string>
+    <string name="chest_name_c2">Cofre del Aventurero</string>
+    <string name="chest_name_c3">Cofre Dorado</string>
+    <string name="chest_name_c4">Cofre Lunar</string>
+    <string name="chest_name_c5">Cofre Mítico</string>
 </resources>
