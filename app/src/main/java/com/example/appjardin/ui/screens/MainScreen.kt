@@ -410,7 +410,7 @@ fun MainScreen(
                             containerColor = CreamBackground,
                             contentColor = darkGreen
                         ),
-                        border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.35f))
+                        border = BorderStroke(1.dp, activeColor)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
