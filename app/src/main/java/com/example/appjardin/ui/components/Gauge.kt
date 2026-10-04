@@ -5,7 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appjardin.ui.theme.DarkText
@@ -24,7 +22,6 @@ import com.example.appjardin.ui.theme.DarkText
 @Composable
 fun CircularGauge(
     percentage: Float,
-    stateText: String,
     stateColor: Color,
     modifier: Modifier = Modifier
 ) {
@@ -34,7 +31,7 @@ fun CircularGauge(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
             val strokeWidth = 14.dp.toPx()
             val startAngle = 135f
             val sweepAngle = 270f
@@ -68,18 +65,6 @@ fun CircularGauge(
             fontWeight = FontWeight.Bold,
             color = DarkText,
             modifier = Modifier.align(Alignment.Center)
-        )
-        
-        // State text just below the semicircle (+2sp font size = 15.sp, +6-8dp spacing)
-        Text(
-            text = stateText,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = stateColor,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 6.dp)
         )
     }
 }

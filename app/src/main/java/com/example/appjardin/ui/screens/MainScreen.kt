@@ -1,7 +1,9 @@
 package com.example.appjardin.ui.screens
 
+import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -18,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -123,6 +127,69 @@ fun MainScreen(
         else -> R.drawable.planta
     }
 
+    // Advice button chest shake & glow animation setup
+    val infiniteTransition = rememberInfiniteTransition(label = "AdviceAnim")
+    
+    val shakeAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2500
+                0f at 0
+                6f at 50
+                (-6f) at 100
+                6f at 150
+                (-6f) at 200
+                6f at 250
+                (-6f) at 300
+                2f at 350
+                0f at 500
+                0f at 2500
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ShakeAngle"
+    )
+
+    val shakeTranslation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2500
+                0f at 0
+                2f at 50
+                (-2f) at 100
+                2f at 150
+                (-2f) at 200
+                2f at 250
+                (-2f) at 300
+                1f at 350
+                0f at 500
+                0f at 2500
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ShakeTranslation"
+    )
+
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2500
+                0f at 0
+                0.8f at 250
+                0f at 500
+                0f at 2500
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "GlowAlpha"
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -150,7 +217,7 @@ fun MainScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. MAIN CARD (Height increased to 265dp)
+            // 1. MAIN CARD (Height 265dp)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,7 +233,8 @@ fun MainScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left Column (~50%): Moisture Gauge & Details
+                    // Left Column (~50%): Moisture Gauge & Details with equal itemSpacing
+                    val itemSpacing = 6.dp
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -178,21 +246,23 @@ fun MainScreen(
                             imageVector = Icons.Default.WaterDrop,
                             contentDescription = null,
                             tint = activeColor,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Box(
-                            modifier = Modifier.size(135.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularGauge(
-                                percentage = if (plant == null) 0f else humidity,
-                                stateText = stateText,
-                                stateColor = activeColor,
-                                modifier = Modifier.size(135.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(itemSpacing))
+                        CircularGauge(
+                            percentage = if (plant == null) 0f else humidity,
+                            stateColor = activeColor,
+                            modifier = Modifier.size(110.dp)
+                        )
+                        Spacer(modifier = Modifier.height(itemSpacing))
+                        Text(
+                            text = stateText,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = activeColor,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(itemSpacing))
                         Text(
                             text = "Humedad del suelo",
                             fontSize = 11.sp,
@@ -220,7 +290,7 @@ fun MainScreen(
                 }
             }
 
-            // 2. PET + CONSEJO BUTTON ROW (Pet size increased by 70% -> ~210dp height, aligned start)
+            // 2. PET + CONSEJO BUTTON ROW
             val petMood = state.toPetMood()
             Row(
                 modifier = Modifier
@@ -243,7 +313,35 @@ fun MainScreen(
                     onClick = { /* TODO: Consejo */ },
                     modifier = Modifier
                         .height(48.dp)
-                        .padding(start = 12.dp),
+                        .padding(start = 12.dp)
+                        .graphicsLayer {
+                            rotationZ = shakeAngle
+                            translationX = shakeTranslation
+                        }
+                        .drawBehind {
+                            if (glowAlpha > 0f) {
+                                val paint = Paint().apply {
+                                    isAntiAlias = true
+                                    color = activeColor.copy(alpha = glowAlpha).toArgb()
+                                    maskFilter = BlurMaskFilter(20f, BlurMaskFilter.Blur.NORMAL)
+                                }
+                                drawContext.canvas.nativeCanvas.drawRoundRect(
+                                    -8f, -8f, size.width + 8f, size.height + 8f,
+                                    size.height / 2f, size.height / 2f,
+                                    paint
+                                )
+                                
+                                val sparkPaint = Paint().apply {
+                                    isAntiAlias = true
+                                    color = android.graphics.Color.WHITE
+                                }
+                                val cx = size.width / 2f
+                                val cy = size.height / 2f
+                                drawContext.canvas.nativeCanvas.drawCircle(cx - 25f, cy - 12f, 3.5f * glowAlpha, sparkPaint)
+                                drawContext.canvas.nativeCanvas.drawCircle(cx + 30f, cy - 15f, 3f * glowAlpha, sparkPaint)
+                                drawContext.canvas.nativeCanvas.drawCircle(cx + 25f, cy + 12f, 4f * glowAlpha, sparkPaint)
+                            }
+                        },
                     colors = ButtonDefaults.buttonColors(containerColor = activeColor),
                     shape = RoundedCornerShape(24.dp)
                 ) {
