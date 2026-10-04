@@ -30,6 +30,7 @@ class SettingsDataStore(private val context: Context) {
         val GAME_LAST_DATE = stringPreferencesKey("game_last_date")
         val GAME_UNLOCKED_PETS = stringSetPreferencesKey("game_unlocked_pets")
         val DIAGNOSTICS_COUNT = intPreferencesKey("diagnostics_count")
+        val MANUAL_WATERINGS_COUNT = intPreferencesKey("manual_waterings_count")
         val PLANT_PHOTO_SET = booleanPreferencesKey("plant_photo_set")
         val PET_RENAMED = booleanPreferencesKey("pet_renamed")
 
@@ -95,6 +96,11 @@ class SettingsDataStore(private val context: Context) {
     val diagnosticsCountFlow: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[DIAGNOSTICS_COUNT] ?: 0
+        }
+
+    val manualWateringsCountFlow: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[MANUAL_WATERINGS_COUNT] ?: 0
         }
 
     val plantPhotoSetFlow: Flow<Boolean> = context.dataStore.data
@@ -212,13 +218,13 @@ class SettingsDataStore(private val context: Context) {
     suspend fun updateLoginStreak(todayStr: String) {
         context.dataStore.edit { preferences ->
             val lastDate = preferences[GAME_LAST_DATE] ?: ""
-            if (lastDate != todayStr) {
-                // If system date is not older than last date
-                if (lastDate.isEmpty() || todayStr > lastDate) {
-                    val currentLevel = preferences[GAME_LEVEL] ?: 1
-                    preferences[GAME_LEVEL] = currentLevel + 1
-                    preferences[GAME_LAST_DATE] = todayStr
-                }
+            if (lastDate.isEmpty()) {
+                preferences[GAME_LEVEL] = 1
+                preferences[GAME_LAST_DATE] = todayStr
+            } else if (todayStr > lastDate) {
+                val currentLevel = preferences[GAME_LEVEL] ?: 1
+                preferences[GAME_LEVEL] = currentLevel + 1
+                preferences[GAME_LAST_DATE] = todayStr
             }
         }
     }
@@ -227,6 +233,13 @@ class SettingsDataStore(private val context: Context) {
         context.dataStore.edit { preferences ->
             val current = preferences[DIAGNOSTICS_COUNT] ?: 0
             preferences[DIAGNOSTICS_COUNT] = current + 1
+        }
+    }
+
+    suspend fun incrementManualWaterings() {
+        context.dataStore.edit { preferences ->
+            val current = preferences[MANUAL_WATERINGS_COUNT] ?: 0
+            preferences[MANUAL_WATERINGS_COUNT] = current + 1
         }
     }
 

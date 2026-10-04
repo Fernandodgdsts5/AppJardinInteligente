@@ -11,7 +11,8 @@ data class PlantEntity(
     val humedadBuena: Int,
     val humedadExceso: Int,
     val imagePath: String? = null,
-    val defaultKey: String? = null
+    val defaultKey: String? = null,
+    val isUserCreated: Boolean = false
 )
 
 @Entity(tableName = "sessions")
