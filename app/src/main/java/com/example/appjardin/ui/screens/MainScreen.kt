@@ -150,11 +150,11 @@ fun MainScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. MAIN CARD (Height increased by 10% -> 253dp)
+            // 1. MAIN CARD (Height increased to 265dp)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(253.dp),
+                    .height(265.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 shape = RoundedCornerShape(20.dp)

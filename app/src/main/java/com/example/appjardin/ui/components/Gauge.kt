@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appjardin.ui.theme.DarkText
@@ -69,15 +70,16 @@ fun CircularGauge(
             modifier = Modifier.align(Alignment.Center)
         )
         
-        // State text just below the semicircle
+        // State text just below the semicircle (+2sp font size = 15.sp, +6-8dp spacing)
         Text(
             text = stateText,
-            fontSize = 13.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = stateColor,
+            textAlign = TextAlign.Center,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 0.dp)
+                .padding(bottom = 6.dp)
         )
     }
 }
