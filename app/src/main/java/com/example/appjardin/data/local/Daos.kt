@@ -45,4 +45,10 @@ interface SessionDao {
 
     @Update
     suspend fun updateSession(session: SessionEntity)
+
+    @Query("DELETE FROM sessions WHERE id = :sessionId")
+    suspend fun deleteSessionById(sessionId: Int)
+
+    @Query("DELETE FROM sessions WHERE id IN (:sessionIds)")
+    suspend fun deleteSessionsByIds(sessionIds: List<Int>)
 }

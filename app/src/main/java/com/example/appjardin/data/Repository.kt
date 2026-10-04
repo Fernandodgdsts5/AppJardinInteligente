@@ -208,4 +208,22 @@ class Repository(private val context: Context) {
             Log.e("Repository", "Error ending session", e)
         }
     }
+
+    suspend fun deleteSession(sessionId: Int) = withContext(Dispatchers.IO) {
+        try {
+            sessionDao.deleteSessionById(sessionId)
+            Log.d("Repository", "Deleted session ID: $sessionId")
+        } catch (e: Exception) {
+            Log.e("Repository", "Error deleting session", e)
+        }
+    }
+
+    suspend fun deleteSessions(sessionIds: List<Int>) = withContext(Dispatchers.IO) {
+        try {
+            sessionDao.deleteSessionsByIds(sessionIds)
+            Log.d("Repository", "Deleted sessions IDs: $sessionIds")
+        } catch (e: Exception) {
+            Log.e("Repository", "Error deleting sessions", e)
+        }
+    }
 }

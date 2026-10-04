@@ -72,14 +72,28 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     val selectedPet: StateFlow<Pet> = selectedPetId
         .map { Pet.fromId(it) }
         .stateIn(viewModelScope, SharingStarted.Lazily, Pet.GUSANO)
-    
+
     private val _selectedPlant = MutableStateFlow<PlantEntity?>(null)
     val selectedPlant: StateFlow<PlantEntity?> = _selectedPlant
+
+    private val _selectedSessionIds = MutableStateFlow<Set<Int>>(emptySet())
+    val selectedSessionIds: StateFlow<Set<Int>> = _selectedSessionIds
+
+    private val _isSessionSelectionMode = MutableStateFlow<Boolean>(false)
+    val isSessionSelectionMode: StateFlow<Boolean> = _isSessionSelectionMode
 
     val telemetry = bleManager.telemetry
     val connectionState = bleManager.connectionState
     val discoveredDevices = bleManager.discoveredDevices
     val isScanning = bleManager.isScanning
+
+    val activeSessionId: StateFlow<Int?> = combine(connectionState, allSessions) { state, sessions ->
+        if (state == BluetoothProfile.STATE_CONNECTED && isRecordingSession) {
+            sessions.firstOrNull()?.id
+        } else {
+            null
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     private val _pumpOn = MutableStateFlow(false)
     val pumpOn: StateFlow<Boolean> = _pumpOn
@@ -217,6 +231,60 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun updatePlant(plant: PlantEntity, newImagePath: String?) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.updatePlant(plant, newImagePath)
+        }
+    }
+
+    fun toggleSessionSelection(sessionId: Int) {
+        val current = _selectedSessionIds.value.toMutableSet()
+        if (current.contains(sessionId)) {
+            current.remove(sessionId)
+        } else {
+            current.add(sessionId)
+        }
+        _selectedSessionIds.value = current
+        _isSessionSelectionMode.value = current.isNotEmpty()
+    }
+
+    fun selectAllSessions(allIds: List<Int>) {
+        _selectedSessionIds.value = allIds.toSet()
+        _isSessionSelectionMode.value = allIds.isNotEmpty()
+    }
+
+    fun clearSessionSelection() {
+        _selectedSessionIds.value = emptySet()
+        _isSessionSelectionMode.value = false
+    }
+
+    fun deleteSelectedSessions(activeSessionId: Int?, onActiveExcluded: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            val idsToDelete = _selectedSessionIds.value.toMutableSet()
+            if (activeSessionId != null && idsToDelete.contains(activeSessionId)) {
+                idsToDelete.remove(activeSessionId)
+                withContext(Dispatchers.Main) {
+                    onActiveExcluded()
+                }
+            }
+            if (idsToDelete.isNotEmpty()) {
+                repository.deleteSessions(idsToDelete.toList())
+            }
+            withContext(Dispatchers.Main) {
+                clearSessionSelection()
+            }
+        }
+    }
+
+    fun deleteSingleSession(sessionId: Int, activeSessionId: Int?, onActiveExcluded: () -> Unit, onSuccess: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            if (activeSessionId != null && sessionId == activeSessionId) {
+                withContext(Dispatchers.Main) {
+                    onActiveExcluded()
+                }
+                return@launch
+            }
+            repository.deleteSession(sessionId)
+            withContext(Dispatchers.Main) {
+                onSuccess()
+            }
         }
     }
 

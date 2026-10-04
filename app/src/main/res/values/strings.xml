@@ -12,7 +12,7 @@
     <string name="retry_photo">Volver a intentar</string>
     <string name="cancel">Cancelar</string>
     <string name="add_image">Agregar imagen</string>
-    <string name="selected_pet_badge">Planta seleccionada</string>
+    <string name="selected_plant_badge">Planta seleccionada</string>
     <string name="plant_type_default">Predeterminada</string>
     <string name="plant_type_custom">Personalizada</string>
     <string name="current_humidity">Humedad actual</string>
@@ -36,4 +36,14 @@
     <string name="pet_mood_feliz">feliz</string>
     <string name="pet_mood_enojado">enojado</string>
     <string name="pet_mood_desc">%1$s, %2$s</string>
+    <string name="delete_sessions_title">¿Eliminar %d registros?</string>
+    <string name="delete_single_session_title">¿Eliminar sesión?</string>
+    <string name="active_session_warning">La sesión actual en curso no se puede eliminar y ha sido excluida.</string>
+    <string name="select_all">Seleccionar todos</string>
+    <string name="session_detail_title">Detalle de Sesión</string>
+    <string name="consequence_low">Humedad crítica: la planta requiere riego urgente.</string>
+    <string name="consequence_good">Humedad óptima: la planta se encuentra en excelente estado.</string>
+    <string name="consequence_excess">Humedad excesiva: riesgo de pudrición de raíces.</string>
+    <string name="consequence_neutral">Humedad en niveles normales.</string>
+    <string name="consequence_noplant">Sin planta asociada o información no disponible.</string>
 </resources>
