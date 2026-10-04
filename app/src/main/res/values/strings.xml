@@ -28,4 +28,12 @@
     <string name="pet_name_title">Nombre de la mascota</string>
     <string name="pet_name_edit">Editar</string>
     <string name="reset_name">Restaurar nombre</string>
+    <string name="tab_humidity">Humedad</string>
+    <string name="tab_diagnosis">Diagnóstico</string>
+    <string name="empty_diagnosis">Aún no hay diagnósticos</string>
+    <string name="pet_mood_triste">triste</string>
+    <string name="pet_mood_neutral">neutral</string>
+    <string name="pet_mood_feliz">feliz</string>
+    <string name="pet_mood_enojado">enojado</string>
+    <string name="pet_mood_desc">%1$s, %2$s</string>
 </resources>

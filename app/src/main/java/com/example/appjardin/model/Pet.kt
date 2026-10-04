@@ -85,3 +85,13 @@ enum class Pet(
         }
     }
 }
+
+fun MoistureState.toPetMood(): PetMood {
+    return when (this) {
+        MoistureState.LOW_MOISTURE -> PetMood.TRISTE
+        MoistureState.MEDIUM_MOISTURE -> PetMood.NEUTRAL
+        MoistureState.GOOD_MOISTURE -> PetMood.FELIZ
+        MoistureState.EXCESS_MOISTURE -> PetMood.ENOJADO
+        else -> PetMood.NEUTRAL
+    }
+}
