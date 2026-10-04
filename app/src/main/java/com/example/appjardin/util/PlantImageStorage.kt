@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.exifinterface.media.ExifInterface
 import com.example.appjardin.R
@@ -12,10 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.util.UUID
 
 object PlantImageStorage {
+
+    private const val TAG = "PlantImage"
 
     @DrawableRes
     fun getDefaultDrawableRes(defaultKey: String?): Int? {
@@ -30,8 +32,14 @@ object PlantImageStorage {
 
     suspend fun saveImageToInternalStorage(context: Context, sourceUri: Uri): String? = withContext(Dispatchers.IO) {
         try {
-            // Decode with sample size to prevent OOM / ANR on high-res photos
-            val originalBitmap = decodeSampledBitmapFromUri(context, sourceUri, 1024) ?: return@withContext null
+            Log.d(TAG, "Starting image processing for uri: $sourceUri")
+            val startTime = System.currentTimeMillis()
+
+            val originalBitmap = decodeSampledBitmapFromUri(context, sourceUri, 1024)
+            if (originalBitmap == null) {
+                Log.e(TAG, "Failed to decode bitmap from uri: $sourceUri")
+                return@withContext null
+            }
 
             // Handle EXIF orientation if applicable
             val rotatedBitmap = handleExifOrientation(context, sourceUri, originalBitmap)
@@ -58,9 +66,12 @@ object PlantImageStorage {
             if (rotatedBitmap != processedBitmap) rotatedBitmap.recycle()
             processedBitmap.recycle()
 
+            val duration = System.currentTimeMillis() - startTime
+            Log.d(TAG, "Image successfully saved to ${file.absolutePath} in ${duration}ms")
+
             file.absolutePath
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error saving image from uri: $sourceUri", e)
             null
         }
     }
@@ -70,18 +81,17 @@ object PlantImageStorage {
         try {
             val file = File(imagePath)
             if (file.exists()) {
-                file.delete()
+                val deleted = file.delete()
+                Log.d(TAG, "Deleted old image file: $imagePath (success=$deleted)")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error deleting image file: $imagePath", e)
         }
     }
 
     private fun decodeSampledBitmapFromUri(context: Context, uri: Uri, reqSize: Int): Bitmap? {
         return try {
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 BitmapFactory.decodeStream(inputStream, null, options)
             }
@@ -93,6 +103,7 @@ object PlantImageStorage {
                 BitmapFactory.decodeStream(inputStream, null, options)
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error decoding sampled bitmap from uri: $uri", e)
             null
         }
     }
@@ -137,6 +148,7 @@ object PlantImageStorage {
                 bitmap
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error handling EXIF orientation for uri: $uri", e)
             bitmap
         }
     }

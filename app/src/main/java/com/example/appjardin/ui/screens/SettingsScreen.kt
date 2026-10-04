@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -40,6 +41,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.appjardin.R
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.model.MoistureState
@@ -640,19 +642,26 @@ fun PlantFormDialog(
     
     var currentImagePath by remember { mutableStateOf(plantToEdit?.imagePath) }
     
-    var pendingUri by remember { mutableStateOf<Uri?>(null) }
-    var showPreview by remember { mutableStateOf(false) }
+    // Using rememberSaveable since Uri is Parcelable and survives activity recreation
+    var pendingUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var showPreview by rememberSaveable { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val ts = System.currentTimeMillis()
+        Log.d("PlantCamera", "[$ts] cameraLauncher result: success=$success, uri=$tempCameraUri")
         if (success && tempCameraUri != null) {
             pendingUri = tempCameraUri
             showPreview = true
+        } else {
+            cleanupTempUri(tempCameraUri)
         }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        val ts = System.currentTimeMillis()
+        Log.d("PlantCamera", "[$ts] galleryLauncher result: uri=$uri")
         if (uri != null) {
             pendingUri = uri
             showPreview = true
@@ -660,17 +669,26 @@ fun PlantFormDialog(
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val ts = System.currentTimeMillis()
+        Log.d("PlantCamera", "[$ts] cameraPermissionLauncher result: granted=$granted")
         if (granted) {
             val u = createImageUri(context)
-            tempCameraUri = u
-            cameraLauncher.launch(u)
+            if (u != null) {
+                tempCameraUri = u
+                Log.d("PlantCamera", "[$ts] Launching camera with uri: $u")
+                cameraLauncher.launch(u)
+            }
         } else {
             Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
         }
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            cleanupTempUri(tempCameraUri)
+            cleanupTempUri(pendingUri)
+            onDismiss()
+        },
         title = { Text(if (isEditing) "Editar Planta" else "Nueva Planta Personalizada", fontWeight = FontWeight.Bold) },
         text = {
             Column(
@@ -812,6 +830,8 @@ fun PlantFormDialog(
                                 defaultKey = null
                             )
                         }
+                        cleanupTempUri(tempCameraUri)
+                        cleanupTempUri(pendingUri)
                         onSave(plantResult, currentImagePath)
                     }
                 },
@@ -821,7 +841,11 @@ fun PlantFormDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = {
+                cleanupTempUri(tempCameraUri)
+                cleanupTempUri(pendingUri)
+                onDismiss()
+            }) {
                 Text("Cancelar", color = Color.Gray)
             }
         }
@@ -845,11 +869,16 @@ fun PlantFormDialog(
                         .fillMaxWidth()
                         .clickable {
                             showSheet = false
+                            val ts = System.currentTimeMillis()
+                            Log.d("PlantCamera", "[$ts] Tapped 'Tomar foto'")
                             val perm = Manifest.permission.CAMERA
                             if (ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED) {
                                 val u = createImageUri(context)
-                                tempCameraUri = u
-                                cameraLauncher.launch(u)
+                                if (u != null) {
+                                    tempCameraUri = u
+                                    Log.d("PlantCamera", "[$ts] Launching camera with uri: $u")
+                                    cameraLauncher.launch(u)
+                                }
                             } else {
                                 cameraPermissionLauncher.launch(perm)
                             }
@@ -903,6 +932,7 @@ fun PlantFormDialog(
         AlertDialog(
             onDismissRequest = {
                 showPreview = false
+                cleanupTempUri(pendingUri)
                 pendingUri = null
             },
             title = { Text("Vista previa", fontWeight = FontWeight.Bold) },
@@ -913,7 +943,10 @@ fun PlantFormDialog(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     AsyncImage(
-                        model = pendingUri,
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(pendingUri)
+                            .size(1024, 1024)
+                            .build(),
                         contentDescription = "Vista previa",
                         modifier = Modifier
                             .size(180.dp)
@@ -929,9 +962,14 @@ fun PlantFormDialog(
                         showPreview = false
                         pendingUri = null
                         if (u != null) {
+                            val ts = System.currentTimeMillis()
+                            Log.d("PlantCamera", "[$ts] Start processing image from uri: $u")
                             scope.launch(Dispatchers.IO) {
                                 val path = PlantImageStorage.saveImageToInternalStorage(context, u)
+                                cleanupTempUri(u)
                                 withContext(Dispatchers.Main) {
+                                    val endTs = System.currentTimeMillis()
+                                    Log.d("PlantCamera", "[$endTs] Finished processing image. Result path: $path")
                                     if (path != null) {
                                         currentImagePath = path
                                     } else {
@@ -949,6 +987,8 @@ fun PlantFormDialog(
             dismissButton = {
                 TextButton(onClick = {
                     showPreview = false
+                    cleanupTempUri(pendingUri)
+                    pendingUri = null
                     showSheet = true
                 }) {
                     Text("Volver a intentar", color = Color.Gray)
@@ -958,11 +998,42 @@ fun PlantFormDialog(
     }
 }
 
-private fun createImageUri(context: Context): Uri {
-    val imageFile = File(context.cacheDir, "temp_camera_image_${System.currentTimeMillis()}.jpg")
-    return FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        imageFile
-    )
+private fun createImageUri(context: Context): Uri? {
+    return try {
+        val cameraDir = File(context.cacheDir, "camera")
+        if (!cameraDir.exists()) {
+            cameraDir.mkdirs()
+        }
+        cameraDir.listFiles()?.forEach { file ->
+            if (System.currentTimeMillis() - file.lastModified() > 3600000L) {
+                file.delete()
+            }
+        }
+        val imageFile = File(cameraDir, "temp_camera_${System.currentTimeMillis()}.jpg")
+        imageFile.createNewFile()
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+    } catch (e: Exception) {
+        android.util.Log.e("PlantCamera", "Error creating camera image URI", e)
+        Toast.makeText(context, "Error al preparar la cámara", Toast.LENGTH_SHORT).show()
+        null
+    }
+}
+
+private fun cleanupTempUri(uri: Uri?) {
+    if (uri == null) return
+    try {
+        val path = uri.path ?: return
+        val file = File(path)
+        if (file.exists() && file.absolutePath.contains("camera")) {
+            file.delete()
+        } else if (uri.scheme == "file") {
+            file.delete()
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PlantCamera", "Error cleaning up temp uri: $uri", e)
+    }
 }
