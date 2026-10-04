@@ -326,6 +326,14 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun onAppMinimized() {
+        if (isRecordingSession) {
+            viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+                repository.recordSessionEnd(lastKnownHumidity, appStartMinHumidity, sessionMaxHumidity)
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         if (isRecordingSession) {
