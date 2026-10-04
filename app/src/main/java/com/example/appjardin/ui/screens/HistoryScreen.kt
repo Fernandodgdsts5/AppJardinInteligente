@@ -1,8 +1,8 @@
 package com.example.appjardin.ui.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -13,8 +13,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -81,42 +83,50 @@ fun HistoryScreen(viewModel: GardenViewModel) {
     Scaffold(
         topBar = {
             if (isSelectionMode) {
+                val selectionCountText = if (selectedSessionIds.size == 1) {
+                    stringResource(R.string.selection_count_singular)
+                } else {
+                    stringResource(R.string.selection_count_plural, selectedSessionIds.size)
+                }
                 TopAppBar(
                     title = {
                         Text(
-                            text = "${selectedSessionIds.size} seleccionados",
+                            text = selectionCountText,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.clearSessionSelection() }) {
+                        IconButton(
+                            onClick = { viewModel.clearSessionSelection() },
+                            modifier = Modifier.size(48.dp)
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Assessment, // Or close icon, but standard is fine
-                                contentDescription = "Cerrar",
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
                                 tint = Color.White
                             )
                         }
                     },
                     actions = {
-                        TextButton(
-                            onClick = {
-                                viewModel.selectAllSessions(sessions.map { it.id })
-                            }
+                        IconButton(
+                            onClick = { viewModel.selectAllSessions(sessions.map { it.id }) },
+                            modifier = Modifier.size(48.dp)
                         ) {
-                            Text(
-                                text = stringResource(R.string.select_all),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = stringResource(R.string.cd_select_all),
+                                tint = Color.White
                             )
                         }
                         IconButton(
-                            onClick = { showMultiDeleteDialog = true }
+                            onClick = { showMultiDeleteDialog = true },
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Assessment, // Or delete icon
-                                contentDescription = "Eliminar",
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.cd_delete),
                                 tint = Color.White
                             )
                         }
@@ -380,7 +390,7 @@ fun SessionHistoryItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left text info (weight 1f, padding 16.dp)
+            // Left text info (weight 1f) with proper spacing and no forced vertical clipping
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -395,7 +405,8 @@ fun SessionHistoryItem(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
                         if (isSelectionMode) {
                             Checkbox(
@@ -406,10 +417,9 @@ fun SessionHistoryItem(
                         }
                         Text(
                             text = session.plantName,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkText,
-                            maxLines = 1
+                            color = DarkText
                         )
                     }
                     Surface(
@@ -439,24 +449,24 @@ fun SessionHistoryItem(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Ini: ${String.format(Locale.getDefault(), "%.1f", inicial)}% | Fin: ${String.format(Locale.getDefault(), "%.1f", final)}%", fontSize = 13.sp, color = DarkText)
-                        Text("Prom: ${String.format(Locale.getDefault(), "%.1f", avg)}%", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = activeColor)
+                        Text("Ini: ${String.format(Locale.getDefault(), "%.1f", inicial)}% | Fin: ${String.format(Locale.getDefault(), "%.1f", final)}%", fontSize = 12.sp, color = DarkText)
+                        Text("Prom: ${String.format(Locale.getDefault(), "%.1f", avg)}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = activeColor)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Mín: ${String.format(Locale.getDefault(), "%.1f", session.humedadMasBaja)}%", fontSize = 12.sp, color = Color.Gray)
-                        Text("Máx: ${String.format(Locale.getDefault(), "%.1f", session.humedadMasAlta)}%", fontSize = 12.sp, color = Color.Gray)
+                        Text("Mín: ${String.format(Locale.getDefault(), "%.1f", session.humedadMasBaja)}%", fontSize = 11.sp, color = Color.Gray)
+                        Text("Máx: ${String.format(Locale.getDefault(), "%.1f", session.humedadMasAlta)}%", fontSize = 11.sp, color = Color.Gray)
                     }
                 }
             }
 
-            // Right image (fillMaxHeight(), aspectRatio(1f), ContentScale.Fit, clipped)
+            // Right image (max 40% of card width, 20% smaller than previous 1:1, ContentScale.Fit)
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .aspectRatio(1f)
+                    .fillMaxWidth(if (isSelectionMode) 0.32f else 0.38f)
                     .clip(RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)),
                 contentAlignment = Alignment.Center
             ) {
@@ -464,8 +474,9 @@ fun SessionHistoryItem(
                     painter = painterResource(id = selectedPet.getDrawable(petMood)),
                     contentDescription = contentDesc,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
+                        .fillMaxHeight()
+                        .aspectRatio(1f)
+                        .padding(4.dp),
                     contentScale = ContentScale.Fit
                 )
             }
@@ -519,8 +530,6 @@ fun SessionDetailBottomSheet(
         else -> stringResource(R.string.consequence_noplant)
     }
 
-    val effectivePetName = petNames[selectedPet.id] ?: selectedPet.defaultName
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.White,
@@ -560,6 +569,12 @@ fun SessionDetailBottomSheet(
                     color = DarkText
                 )
             }
+            val effectivePetName = petNames[selectedPet.id] ?: selectedPet.defaultName
+            Text(
+                text = "Mascota compañera: $effectivePetName",
+                fontSize = 13.sp,
+                color = Color.Gray
+            )
 
             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
 
@@ -643,7 +658,7 @@ fun SessionDetailBottomSheet(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar", color = Color.Gray)
+                    Text("Cancelar", color = Color.Gray.copy(alpha = 0.8f))
                 }
             }
         )

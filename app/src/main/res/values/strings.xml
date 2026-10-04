@@ -46,4 +46,9 @@
     <string name="consequence_excess">Humedad excesiva: riesgo de pudrición de raíces.</string>
     <string name="consequence_neutral">Humedad en niveles normales.</string>
     <string name="consequence_noplant">Sin planta asociada o información no disponible.</string>
+    <string name="selection_count_singular">1 seleccionado</string>
+    <string name="selection_count_plural">%d seleccionados</string>
+    <string name="cd_back">Volver</string>
+    <string name="cd_delete">Eliminar selección</string>
+    <string name="cd_select_all">Seleccionar todo</string>
 </resources>
