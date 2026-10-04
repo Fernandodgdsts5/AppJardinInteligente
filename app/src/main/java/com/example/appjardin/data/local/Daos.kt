@@ -1,6 +1,7 @@
 package com.example.appjardin.data.local
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -20,6 +21,9 @@ interface PlantDao {
 
     @Update
     suspend fun updatePlant(plant: PlantEntity)
+
+    @Delete
+    suspend fun deletePlant(plant: PlantEntity)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertPlants(plants: List<PlantEntity>)

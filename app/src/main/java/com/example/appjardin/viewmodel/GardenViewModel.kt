@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(FlowPreview::class)
@@ -146,6 +147,21 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun addPlant(plant: PlantEntity) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.insertPlant(plant)
+        }
+    }
+
+    fun deletePlant(plant: PlantEntity, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            try {
+                repository.deletePlant(plant)
+                withContext(Dispatchers.Main) {
+                    onSuccess()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onError(e.localizedMessage ?: "Error al eliminar planta")
+                }
+            }
         }
     }
 

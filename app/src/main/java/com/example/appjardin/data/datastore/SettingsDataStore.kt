@@ -3,6 +3,7 @@ package com.example.appjardin.data.datastore
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -18,6 +19,7 @@ class SettingsDataStore(private val context: Context) {
         val USER_NAME = stringPreferencesKey("user_name")
         val SELECTED_PLANT_ID = intPreferencesKey("selected_plant_id")
         val LAST_DISCONNECT_TIME = longPreferencesKey("last_disconnect_time")
+        val DEFAULTS_SEEDED = booleanPreferencesKey("defaults_seeded")
     }
 
     val userNameFlow: Flow<String> = context.dataStore.data
@@ -35,6 +37,11 @@ class SettingsDataStore(private val context: Context) {
             preferences[LAST_DISCONNECT_TIME] ?: 0L
         }
 
+    val defaultsSeededFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[DEFAULTS_SEEDED] ?: false
+        }
+
     suspend fun saveUserName(name: String) {
         context.dataStore.edit { preferences ->
             preferences[USER_NAME] = name
@@ -50,6 +57,12 @@ class SettingsDataStore(private val context: Context) {
     suspend fun saveLastDisconnectTime(time: Long) {
         context.dataStore.edit { preferences ->
             preferences[LAST_DISCONNECT_TIME] = time
+        }
+    }
+
+    suspend fun setDefaultsSeeded(seeded: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DEFAULTS_SEEDED] = seeded
         }
     }
 }

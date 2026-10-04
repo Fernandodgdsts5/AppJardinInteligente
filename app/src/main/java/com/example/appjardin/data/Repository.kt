@@ -27,17 +27,39 @@ class Repository(private val context: Context) {
 
     suspend fun insertDefaultPlantsIfEmpty() = withContext(Dispatchers.IO) {
         try {
-            if (plantDao.getCount() == 0) {
-                val defaults = listOf(
-                    PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80, defaultKey = "tomate"),
-                    PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70, defaultKey = "geranio"),
-                    PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75, defaultKey = "rosa"),
-                    PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90, defaultKey = "helecho")
-                )
-                plantDao.insertPlants(defaults)
+            val defaultsSeeded = settingsDataStore.defaultsSeededFlow.first()
+            val count = plantDao.getCount()
+            if (!defaultsSeeded) {
+                if (count == 0) {
+                    val defaults = listOf(
+                        PlantEntity(name = "Tomate", humedadMinima = 50, humedadBuena = 65, humedadExceso = 80, defaultKey = "tomate"),
+                        PlantEntity(name = "Geranio", humedadMinima = 40, humedadBuena = 55, humedadExceso = 70, defaultKey = "geranio"),
+                        PlantEntity(name = "Rosa", humedadMinima = 45, humedadBuena = 60, humedadExceso = 75, defaultKey = "rosa"),
+                        PlantEntity(name = "Helecho", humedadMinima = 60, humedadBuena = 75, humedadExceso = 90, defaultKey = "helecho")
+                    )
+                    plantDao.insertPlants(defaults)
+                }
+                settingsDataStore.setDefaultsSeeded(true)
             }
         } catch (e: Exception) {
             Log.e("Repository", "Error inserting default plants", e)
+        }
+    }
+
+    suspend fun deletePlant(plant: PlantEntity) = withContext(Dispatchers.IO) {
+        try {
+            plantDao.deletePlant(plant)
+            if (!plant.imagePath.isNullOrBlank()) {
+                PlantImageStorage.deleteImageFile(plant.imagePath)
+            }
+            val currentSelectedId = settingsDataStore.selectedPlantIdFlow.first()
+            if (currentSelectedId == plant.id) {
+                settingsDataStore.saveSelectedPlantId(-1)
+            }
+            Log.d("PlantDelete", "Successfully deleted plant: ${plant.name} (id=${plant.id})")
+        } catch (e: Exception) {
+            Log.e("PlantDelete", "Error deleting plant: ${plant.name}", e)
+            throw e
         }
     }
 

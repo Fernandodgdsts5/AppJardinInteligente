@@ -18,4 +18,9 @@
     <string name="current_humidity">Humedad actual</string>
     <string name="close">Cerrar</string>
     <string name="edit_plant">Editar planta</string>
+    <string name="delete_plant">Eliminar planta</string>
+    <string name="delete_dialog_title">¿Eliminar %s?</string>
+    <string name="delete_dialog_text">Se eliminará la planta y su imagen. El historial de humedad conservará sus registros.</string>
+    <string name="delete_confirm">Eliminar</string>
+    <string name="plant_deleted_toast">Planta eliminada</string>
 </resources>

@@ -410,6 +410,9 @@ fun PlantDetailBottomSheet(
     onEdit: () -> Unit,
     activeColor: Color
 ) {
+    val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val defaultRes = PlantImageStorage.getDefaultDrawableRes(plant.defaultKey)
     val imageModel = when {
         !plant.imagePath.isNullOrBlank() -> File(plant.imagePath)
@@ -580,8 +583,8 @@ fun PlantDetailBottomSheet(
                     border = BorderStroke(1.5.dp, activeColor)
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, tint = activeColor)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Editar planta", color = activeColor, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Editar", color = activeColor, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
 
                 Button(
@@ -592,12 +595,58 @@ fun PlantDetailBottomSheet(
                     shape = RoundedCornerShape(25.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = activeColor)
                 ) {
-                    Text("Cerrar", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Cerrar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
+            }
+
+            // Delete button separated to prevent accidental taps
+            OutlinedButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.error),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Eliminar planta", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("¿Eliminar ${plant.name}?", fontWeight = FontWeight.Bold) },
+            text = { Text("Se eliminará la planta y su imagen. El historial de humedad conservará sus registros.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deletePlant(
+                            plant = plant,
+                            onSuccess = {
+                                Toast.makeText(context, "Planta eliminada", Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            },
+                            onError = { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            }
+        )
     }
 }
 
