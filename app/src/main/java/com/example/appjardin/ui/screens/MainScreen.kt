@@ -174,15 +174,17 @@ fun MainScreen(
         },
         containerColor = CreamBackground
     ) { paddingValues ->
+        @Suppress("UnusedBoxWithConstraintsScope") // maxHeight needed for heightIn min constraint inside verticalScroll
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            val availableHeight = maxHeight
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = maxHeight)
+                    .heightIn(min = availableHeight)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,

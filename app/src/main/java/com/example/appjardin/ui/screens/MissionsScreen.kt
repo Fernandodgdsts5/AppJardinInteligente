@@ -110,7 +110,7 @@ fun MissionsScreen(
             MissionDef("m3", "Planta feliz", "Mantén la humedad adecuada durante una sesión.", true, 1, "80 Monedas + 60 Exp", RewardType.BOTH, rewardAmount = 80, rewardExp = 60, rewardRes = R.drawable.exp_icon),
             MissionDef("m4", "Doctor de plantas", "Realiza 1 diagnóstico de planta.", true, 1, "100 Monedas + 80 Exp", RewardType.BOTH, rewardAmount = 100, rewardExp = 80, rewardRes = R.drawable.exp_icon),
             MissionDef("m5", "Día perfecto", "Completa las misiones 2, 3 y 4 del día.", true, 3, "Cofre del Aventurero", RewardType.CHEST, rewardRes = R.drawable.chest_c2),
-            MissionDef("m6", "Revisar consejo", "Consulta el consejo de tu mascota hoy.", true, 1, "30 Monedas", RewardType.COINS, rewardAmount = 30, rewardRes = R.drawable.coin_stack),
+            MissionDef("m6", "Curioso", "Consulta el dato curioso de tu mascota hoy.", true, 1, "30 Monedas", RewardType.COINS, rewardAmount = 30, rewardRes = R.drawable.coin_stack),
             MissionDef("m7", "Abrir historial", "Revisa tus registros de riego en Historial.", true, 1, "40 Monedas", RewardType.COINS, rewardAmount = 40, rewardRes = R.drawable.coin_stack),
             
             MissionDef("m10", "Humedad ideal I", "Alcanza 10 registros de humedad adecuada.", false, 10, "200 Monedas + 150 Exp", RewardType.BOTH, rewardAmount = 200, rewardExp = 150, rewardRes = R.drawable.exp_icon),
