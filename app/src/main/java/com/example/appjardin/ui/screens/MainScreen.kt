@@ -1,11 +1,6 @@
 package com.example.appjardin.ui.screens
 
-import android.content.res.AssetFileDescriptor
 import android.graphics.Paint
-import android.media.MediaPlayer
-import android.graphics.SurfaceTexture
-import android.view.TextureView
-import android.view.Surface
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -13,13 +8,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
@@ -31,21 +24,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.appjardin.R
@@ -91,132 +78,6 @@ fun Modifier.neumorphic(cornerRadius: Dp = 28.dp) = this.drawBehind {
         radius, radius,
         paint
     )
-}
-
-@Composable
-fun PlantVideoPlayer(
-    modifier: Modifier = Modifier,
-    activeColor: Color,
-    onTap: () -> Unit
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var hasError by remember { mutableStateOf(false) }
-
-    val mediaPlayer = remember {
-        try {
-            val afd: AssetFileDescriptor = context.assets.openFd("animaciones/ab.mp4")
-            MediaPlayer().apply {
-                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                afd.close()
-                isLooping = true
-                setVolume(0f, 0f)
-                prepare()
-                start()
-            }
-        } catch (e: Exception) {
-            hasError = true
-            null
-        }
-    }
-
-    DisposableEffect(lifecycleOwner, mediaPlayer) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME, Lifecycle.Event.ON_START -> {
-                    try {
-                        if (mediaPlayer != null && !mediaPlayer.isPlaying) {
-                            mediaPlayer.start()
-                        }
-                    } catch (e: Exception) {}
-                }
-                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
-                    try {
-                        if (mediaPlayer != null && mediaPlayer.isPlaying) {
-                            mediaPlayer.pause()
-                        }
-                    } catch (e: Exception) {}
-                }
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            try {
-                mediaPlayer?.release()
-            } catch (e: Exception) {}
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(
-                onClick = onTap,
-                role = Role.Button
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (!hasError && mediaPlayer != null) {
-            AndroidView(
-                factory = { ctx ->
-                    TextureView(ctx).apply {
-                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-                                try {
-                                    mediaPlayer.setSurface(Surface(surface))
-                                } catch (e: Exception) {}
-                            }
-                            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-                            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-                                try {
-                                    mediaPlayer.setSurface(null)
-                                } catch (e: Exception) {}
-                                return true
-                            }
-                            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Surface(
-                color = activeColor,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Dato curioso",
-                        tint = Color.White,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
-        }
-        // Transparent touch overlay guaranteeing touch target >= 48dp
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    onClick = onTap,
-                    role = Role.Button
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (hasError || mediaPlayer == null) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Dato curioso",
-                    tint = Color.White,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -270,7 +131,7 @@ fun MainScreen(
         else -> R.drawable.planta
     }
 
-    // Plant facts state
+    // Plant facts state surviving rotation via rememberSaveable
     val factsArray = remember { context.resources.getStringArray(R.array.plant_facts) }
     var shuffledFacts by remember { mutableStateOf(factsArray.toList().shuffled()) }
     var factIndex by rememberSaveable { mutableStateOf(0) }
@@ -284,7 +145,7 @@ fun MainScreen(
         }
     }
 
-    val handleVideoTap = {
+    val handleFactTap = {
         showFact = true
         factTapCount++
         if (factIndex >= shuffledFacts.size) {
@@ -399,7 +260,7 @@ fun MainScreen(
                     }
                 }
 
-                // 2. PET + VIDEO ROW (Vertically centered in available space)
+                // 2. PET + "DATO CURIOSO" BUTTON ROW (Vertically centered in available space)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -424,39 +285,63 @@ fun MainScreen(
                             contentScale = ContentScale.Fit
                         )
 
-                        PlantVideoPlayer(
+                        // Right side Column with reserved slot for fact card + button
+                        Column(
                             modifier = Modifier
-                                .height(130.dp)
-                                .width(110.dp),
-                            activeColor = activeColor,
-                            onTap = handleVideoTap
-                        )
-                    }
-
-                    // Fact bubble overlay
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        AnimatedVisibility(
-                            visible = showFact,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                            modifier = Modifier.padding(end = 120.dp, top = 10.dp)
+                                .width(130.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
                         ) {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(2.dp, activeColor),
-                                modifier = Modifier.widthIn(max = 220.dp)
+                            // Reserved Slot for Fact Card (90.dp height)
+                            Column(
+                                modifier = Modifier
+                                    .height(90.dp)
+                                    .fillMaxWidth(),
+                                verticalArrangement = Arrangement.Bottom,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                AnimatedVisibility(
+                                    visible = showFact,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.5.dp, activeColor),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = shuffledFacts.getOrElse(factIndex) { "Las plantas aman el agua." },
+                                            fontSize = 11.sp,
+                                            color = DarkText,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 4,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // "Dato curioso" Button
+                            Button(
+                                onClick = handleFactTap,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(38.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = activeColor),
+                                shape = RoundedCornerShape(19.dp)
                             ) {
                                 Text(
-                                    text = shuffledFacts.getOrElse(factIndex) { "Las plantas aman el agua y la luz solar." },
+                                    text = stringResource(R.string.advice_button),
                                     fontSize = 13.sp,
-                                    color = DarkText,
-                                    maxLines = 4,
-                                    modifier = Modifier.padding(12.dp)
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1
                                 )
                             }
                         }
