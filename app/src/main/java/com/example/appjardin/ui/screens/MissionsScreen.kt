@@ -408,7 +408,7 @@ fun MissionsScreen(
                     val m5Completed = m2Completed + m3Completed + m4Completed
 
                     val progress = when (mission.id) {
-                        "m1" -> if (isClaimed) 1f else 0f
+                        "m1" -> 1f
                         "m2" -> if (manualWateredToday) 1f else 0f
                         "m3" -> if (happyPlantToday) 1f else 0f
                         "m4" -> if (diagnosticsToday) 1f else 0f
