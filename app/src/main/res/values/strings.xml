@@ -72,4 +72,37 @@
     <string name="reward_desc_pet">Desbloquea una nueva mascota para tu jardín.</string>
     <string name="c5_choose_pet_preview">Elegirás una mascota al abrir el cofre.</string>
     <string name="c5_choose_pet_prompt">Elige una mascota para desbloquear gratis:</string>
+
+    <string-array name="plant_facts">
+        <item>Las plantas se comunican entre sí mediante redes subterráneas de hongos llamadas micorrizas.</item>
+        <item>El bambú puede crecer hasta un metro en un solo día bajo las condiciones ideales.</item>
+        <item>Las hojas de los árboles absorben dióxido de carbono y liberan oxígeno vital para el planeta.</item>
+        <item>Algunas plantas carnívoras, como la Venus atrapamoscas, pueden contar los toques de sus presas.</item>
+        <item>Las semillas de algunas especies pueden permanecer dormidas durante cientos de años antes de germinar.</item>
+        <item>Los girasoles jóvenes siguen al sol durante el día en un movimiento conocido como heliotropismo.</item>
+        <item>Las raíces de un árbol suelen extenderse mucho más allá de la anchura de su copa.</item>
+        <item>Las plantas producen sustancias químicas para ahuyentar plagas o advertir a vecinos cercanos.</item>
+        <item>El árbol de la vainilla es en realidad una especie de orquídea trepadora.</item>
+        <item>Las flores se abren y cierran siguiendo ritmos circadianos internos similares a nuestros relojes biológicos.</item>
+        <item>El café no es un grano, sino la semilla tostada del fruto de un arbusto tropical.</item>
+        <item>Las plantas de interior mejoran la calidad del aire absorbiendo toxinas comunes del hogar.</item>
+        <item>Los cactus almacenan grandes cantidades de agua en sus tejidos carnosos para sobrevivir en desiertos.</item>
+        <item>El fruto de la piña tarda aproximadamente de 18 a 24 meses en crecer y madurar por completo.</item>
+        <item>Las hojas cambian de color en otoño porque la planta deja de producir clorofila y recicla nutrientes.</item>
+        <item>Existen plantas parásitas que no realizan fotosíntesis y roban nutrientes de otras especies.</item>
+        <item>El récord del árbol más alto del mundo lo ostenta una secuoya roja que supera los 115 metros.</item>
+        <item>Las plantas pueden sentir vibraciones provocadas por insectos masticadores y liberar defensas químicas.</item>
+        <item>La flor de la Corpse Flower (Amorphophallus titanum) emite un fuerte olor a carne podrida al florecer.</item>
+        <item>El eucalipto es uno de los árboles de crecimiento más rápido en todo el mundo.</item>
+        <item>Las hojas de algunas plantas acuáticas, como el nenúfar gigante, pueden soportar el peso de un niño.</item>
+        <item>El chocolate proviene de las semillas amargas del cacao, que crecen en grandes vainas sobre el tronco.</item>
+        <item>Las plantas tienen mecanismos hidroneumáticos para bombear agua desde las raíces hasta las copas más altas.</item>
+        <item>El trébol de cuatro hojas es una mutación genética muy rara que ocurre aproximadamente 1 de cada 10,000 veces.</item>
+        <item>Las plantas trepadoras utilizan zarcillos o raíces aéreas para aferrarse a superficies verticales.</item>
+        <item>El polen puede viajar kilómetros transportado por el viento o por polinizadores como abejas y mariposas.</item>
+        <item>Las piñas de los pinos se abren para liberar semillas cuando el clima es seco y cálido.</item>
+        <item>Las plataneras no son árboles, sino hierbas gigantes que forman un pseudotallo fibroso.</item>
+        <item>Algunas flores emiten calor para atraer insectos polinizadores durante las frías mañanas de primavera.</item>
+        <item>Las plantas transforman la energía solar en energía química mediante el proceso de fotosíntesis.</item>
+    </string-array>
 </resources>

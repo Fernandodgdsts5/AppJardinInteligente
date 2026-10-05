@@ -1,36 +1,51 @@
 package com.example.appjardin.ui.screens
 
+import android.content.res.AssetFileDescriptor
 import android.graphics.Paint
+import android.media.MediaPlayer
+import android.graphics.SurfaceTexture
+import android.view.TextureView
+import android.view.Surface
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.appjardin.R
@@ -40,6 +55,7 @@ import com.example.appjardin.ui.components.CircularGauge
 import com.example.appjardin.ui.theme.*
 import com.example.appjardin.util.PlantImageStorage
 import com.example.appjardin.viewmodel.GardenViewModel
+import kotlinx.coroutines.delay
 import java.io.File
 
 fun Modifier.neumorphic(cornerRadius: Dp = 28.dp) = this.drawBehind {
@@ -77,12 +93,139 @@ fun Modifier.neumorphic(cornerRadius: Dp = 28.dp) = this.drawBehind {
     )
 }
 
+@Composable
+fun PlantVideoPlayer(
+    modifier: Modifier = Modifier,
+    activeColor: Color,
+    onTap: () -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasError by remember { mutableStateOf(false) }
+
+    val mediaPlayer = remember {
+        try {
+            val afd: AssetFileDescriptor = context.assets.openFd("animaciones/ab.mp4")
+            MediaPlayer().apply {
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                afd.close()
+                isLooping = true
+                setVolume(0f, 0f)
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            hasError = true
+            null
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, mediaPlayer) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME, Lifecycle.Event.ON_START -> {
+                    try {
+                        if (mediaPlayer != null && !mediaPlayer.isPlaying) {
+                            mediaPlayer.start()
+                        }
+                    } catch (e: Exception) {}
+                }
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    try {
+                        if (mediaPlayer != null && mediaPlayer.isPlaying) {
+                            mediaPlayer.pause()
+                        }
+                    } catch (e: Exception) {}
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            try {
+                mediaPlayer?.release()
+            } catch (e: Exception) {}
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                onClick = onTap,
+                role = Role.Button
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!hasError && mediaPlayer != null) {
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).apply {
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                                try {
+                                    mediaPlayer.setSurface(Surface(surface))
+                                } catch (e: Exception) {}
+                            }
+                            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+                            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                                try {
+                                    mediaPlayer.setSurface(null)
+                                } catch (e: Exception) {}
+                                return true
+                            }
+                            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Surface(
+                color = activeColor,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Dato curioso",
+                        tint = Color.White,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+        }
+        // Transparent touch overlay guaranteeing touch target >= 48dp
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    onClick = onTap,
+                    role = Role.Button
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (hasError || mediaPlayer == null) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Dato curioso",
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: GardenViewModel,
     onNavigateToSettings: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
     val selectedPet by viewModel.selectedPet.collectAsStateWithLifecycle()
@@ -127,37 +270,29 @@ fun MainScreen(
         else -> R.drawable.planta
     }
 
-    // Advice button particle sparkles & shake animation setup
-    val infiniteTransition = rememberInfiniteTransition(label = "AdviceAnim")
-    
-    val shakeAngle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 2300
-                0f at 0
-                5f at 80
-                (-5f) at 160
-                5f at 240
-                (-3f) at 320
-                0f at 500
-                0f at 2300
-            },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ShakeAngle"
-    )
+    // Plant facts state
+    val factsArray = remember { context.resources.getStringArray(R.array.plant_facts) }
+    var shuffledFacts by remember { mutableStateOf(factsArray.toList().shuffled()) }
+    var factIndex by rememberSaveable { mutableStateOf(0) }
+    var showFact by rememberSaveable { mutableStateOf(false) }
+    var factTapCount by remember { mutableStateOf(0) }
 
-    val burstProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2300, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "BurstProgress"
-    )
+    LaunchedEffect(factTapCount) {
+        if (factTapCount > 0) {
+            delay(5000)
+            showFact = false
+        }
+    }
+
+    val handleVideoTap = {
+        showFact = true
+        factTapCount++
+        if (factIndex >= shuffledFacts.size) {
+            shuffledFacts = factsArray.toList().shuffled()
+            factIndex = 0
+        }
+        factIndex = (factIndex + 1) % shuffledFacts.size
+    }
 
     Scaffold(
         topBar = {
@@ -264,7 +399,7 @@ fun MainScreen(
                     }
                 }
 
-                // 2. PET + CONSEJO BUTTON ROW (Vertically centered in available space)
+                // 2. PET + VIDEO ROW (Vertically centered in available space)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -284,59 +419,46 @@ fun MainScreen(
                             contentDescription = selectedPet.speciesName,
                             modifier = Modifier
                                 .height(240.dp)
-                                .fillMaxWidth(0.6f)
+                                .fillMaxWidth(0.55f)
                                 .aspectRatio(1f),
                             contentScale = ContentScale.Fit
                         )
 
-                        Button(
-                            onClick = { /* TODO: Consejo */ },
+                        PlantVideoPlayer(
                             modifier = Modifier
-                                .height(38.dp)
-                                .padding(start = 12.dp)
-                                .graphicsLayer {
-                                    rotationZ = shakeAngle
-                                }
-                                .drawBehind {
-                                    val progress = (burstProgress / 0.8f).coerceIn(0f, 1f)
-                                    if (burstProgress < 0.8f) {
-                                        val alpha = (1f - progress).coerceIn(0f, 1f)
-                                        val paint = Paint().apply {
-                                            isAntiAlias = true
-                                        }
-                                        
-                                        val cx = size.width / 2f
-                                        val cy = size.height / 2f
-                                        
-                                        val particles = listOf(
-                                            Triple(-35f, -20f, activeColor),
-                                            Triple(40f, -25f, Color.White),
-                                            Triple(-45f, 20f, Color.White),
-                                            Triple(35f, 20f, activeColor),
-                                            Triple(-15f, -40f, activeColor),
-                                            Triple(20f, 40f, Color.White)
-                                        )
-                                        
-                                        particles.forEachIndexed { index, (dx, dy, color) ->
-                                            val currentX = cx + dx * (0.6f + 1.4f * progress)
-                                            val currentY = cy + dy * (0.6f + 1.4f * progress)
-                                            val radius = (3f + index % 2 * 1.5f) * (1f + progress * 0.5f)
-                                            
-                                            paint.color = color.copy(alpha = alpha).toArgb()
-                                            drawContext.canvas.nativeCanvas.drawCircle(currentX, currentY, radius, paint)
-                                        }
-                                    }
-                                },
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = activeColor),
-                            shape = RoundedCornerShape(19.dp)
+                                .height(130.dp)
+                                .width(110.dp),
+                            activeColor = activeColor,
+                            onTap = handleVideoTap
+                        )
+                    }
+
+                    // Fact bubble overlay
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        AnimatedVisibility(
+                            visible = showFact,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.padding(end = 120.dp, top = 10.dp)
                         ) {
-                            Text(
-                                text = stringResource(R.string.advice_button),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(2.dp, activeColor),
+                                modifier = Modifier.widthIn(max = 220.dp)
+                            ) {
+                                Text(
+                                    text = shuffledFacts.getOrElse(factIndex) { "Las plantas aman el agua y la luz solar." },
+                                    fontSize = 13.sp,
+                                    color = DarkText,
+                                    maxLines = 4,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
                         }
                     }
                 }
