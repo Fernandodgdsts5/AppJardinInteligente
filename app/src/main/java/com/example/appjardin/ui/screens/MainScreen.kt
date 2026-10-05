@@ -39,6 +39,7 @@ import com.example.appjardin.R
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.toPetMood
 import com.example.appjardin.ui.components.CircularGauge
+import com.example.appjardin.ui.components.GlowParticleButton
 import com.example.appjardin.ui.theme.*
 import com.example.appjardin.util.PlantImageStorage
 import com.example.appjardin.viewmodel.GardenViewModel
@@ -329,15 +330,14 @@ fun MainScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // "Dato curioso" Button
-                            Button(
+                            // "Dato curioso" Glow & Particle Button
+                            GlowParticleButton(
                                 onClick = handleFactTap,
+                                activeColor = activeColor,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(38.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = activeColor),
-                                shape = RoundedCornerShape(19.dp)
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                             ) {
                                 Text(
                                     text = stringResource(R.string.advice_button),
