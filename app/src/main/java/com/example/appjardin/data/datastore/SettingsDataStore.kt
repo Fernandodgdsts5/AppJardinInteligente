@@ -181,7 +181,8 @@ class SettingsDataStore(private val context: Context) {
         rewardAmount: Int,
         rewardExp: Int,
         isDaily: Boolean,
-        dateStr: String
+        dateStr: String,
+        chosenPetId: String? = null
     ): Boolean {
         var success = false
         context.dataStore.edit { preferences ->
@@ -210,6 +211,14 @@ class SettingsDataStore(private val context: Context) {
                     preferences[GAME_EXP] = currentExp + chestExp
                     val chests = preferences[CHESTS_OPENED_COUNT] ?: 0
                     preferences[CHESTS_OPENED_COUNT] = chests + 1
+
+                    val isC5 = missionId == "m14" || missionId == "m24" || missionId == "m45" || missionId == "m47" || missionId == "m72" || missionId == "m81"
+                    if (isC5 && !chosenPetId.isNullOrBlank() && chosenPetId != "reygeko") {
+                        val unlocked = preferences[GAME_UNLOCKED_PETS] ?: setOf("larva", "gusano")
+                        if (!unlocked.contains(chosenPetId)) {
+                            preferences[GAME_UNLOCKED_PETS] = unlocked + chosenPetId
+                        }
+                    }
                 } else {
                     preferences[GAME_COINS] = currentCoins + rewardAmount
                     preferences[GAME_EXP] = currentExp + rewardExp

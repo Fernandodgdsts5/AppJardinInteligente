@@ -256,10 +256,11 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         rewardAmount: Int,
         rewardExp: Int,
         isDaily: Boolean,
+        chosenPetId: String? = null,
         onResult: (Boolean) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            val success = repository.claimMissionAtomic(missionId, rewardType, rewardAmount, rewardExp, isDaily, getTodayStr())
+            val success = repository.claimMissionAtomic(missionId, rewardType, rewardAmount, rewardExp, isDaily, getTodayStr(), chosenPetId)
             withContext(Dispatchers.Main) {
                 onResult(success)
             }

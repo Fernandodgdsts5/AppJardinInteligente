@@ -65,4 +65,11 @@
     <string name="chest_name_c4">Cofre Lunar</string>
     <string name="chest_name_c5">Cofre Mítico</string>
     <string name="error_duplicate_plant_name">Ya existe una planta con ese nombre</string>
+
+    <string name="reward_desc_coins">Obtén monedas para canjear en la tienda del jardín.</string>
+    <string name="reward_desc_both">Obtén monedas y experiencia para avanzar de nivel.</string>
+    <string name="reward_desc_chest">Abre este cofre misterioso para obtener grandes recompensas.</string>
+    <string name="reward_desc_pet">Desbloquea una nueva mascota para tu jardín.</string>
+    <string name="c5_choose_pet_preview">Elegirás una mascota al abrir el cofre.</string>
+    <string name="c5_choose_pet_prompt">Elige una mascota para desbloquear gratis:</string>
 </resources>

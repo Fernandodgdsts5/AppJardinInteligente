@@ -91,9 +91,10 @@ class Repository(private val context: Context) {
         rewardAmount: Int,
         rewardExp: Int,
         isDaily: Boolean,
-        dateStr: String
+        dateStr: String,
+        chosenPetId: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
-        settingsDataStore.claimMissionAtomic(missionId, rewardType, rewardAmount, rewardExp, isDaily, dateStr)
+        settingsDataStore.claimMissionAtomic(missionId, rewardType, rewardAmount, rewardExp, isDaily, dateStr, chosenPetId)
     }
 
     suspend fun buyPetAtomic(petId: String, costCoins: Int, costExp: Int): Boolean = withContext(Dispatchers.IO) {
