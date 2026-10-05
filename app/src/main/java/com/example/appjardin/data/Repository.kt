@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import java.text.Normalizer
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -149,33 +150,59 @@ class Repository(private val context: Context) {
         }
     }
 
-    suspend fun insertPlant(plant: PlantEntity) = withContext(Dispatchers.IO) {
+    fun normalizePlantName(name: String): String {
+        val normalized = Normalizer.normalize(name, Normalizer.Form.NFD)
+            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+        return normalized.trim().replace(Regex("\\s+"), "").lowercase()
+    }
+
+    suspend fun isPlantNameDuplicate(name: String, excludeId: Int = -1): Boolean = withContext(Dispatchers.IO) {
         try {
-            plantDao.insertPlant(plant)
+            val plants = plantDao.getAllPlantsSync()
+            val targetNorm = normalizePlantName(name)
+            plants.any { it.id != excludeId && normalizePlantName(it.name) == targetNorm }
         } catch (e: Exception) {
-            Log.e("Repository", "Error inserting plant", e)
+            false
         }
     }
 
-    suspend fun updatePlant(plant: PlantEntity, newImagePath: String?) = withContext(Dispatchers.IO) {
+    suspend fun insertPlant(plant: PlantEntity): Boolean = withContext(Dispatchers.IO) {
         try {
+            if (isPlantNameDuplicate(plant.name)) {
+                return@withContext false
+            }
+            val userPlant = plant.copy(name = plant.name.trim(), isUserCreated = true)
+            plantDao.insertPlant(userPlant)
+            true
+        } catch (e: Exception) {
+            Log.e("Repository", "Error inserting plant", e)
+            false
+        }
+    }
+
+    suspend fun updatePlant(plant: PlantEntity, newImagePath: String?): Boolean = withContext(Dispatchers.IO) {
+        try {
+            if (isPlantNameDuplicate(plant.name, excludeId = plant.id)) {
+                return@withContext false
+            }
             val existing = plantDao.getPlantById(plant.id)
             if (existing != null) {
                 if (!existing.imagePath.isNullOrBlank() && existing.imagePath != newImagePath) {
                     PlantImageStorage.deleteImageFile(existing.imagePath)
                 }
                 val updated = plant.copy(
-                    name = plant.name,
+                    name = plant.name.trim(),
                     humedadMinima = plant.humedadMinima,
                     humedadBuena = plant.humedadBuena,
                     humedadExceso = plant.humedadExceso,
                     imagePath = newImagePath
                 )
                 plantDao.updatePlant(updated)
-                Log.d("Repository", "Updated plant ID: ${plant.id}")
-            }
+                true
+            } else false
         } catch (e: Exception) {
             Log.e("Repository", "Error updating plant", e)
+            false
         }
     }
 

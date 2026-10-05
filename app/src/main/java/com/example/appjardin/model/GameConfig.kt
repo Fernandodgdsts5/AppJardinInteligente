@@ -4,6 +4,7 @@ import com.example.appjardin.R
 
 object GameConfig {
     const val GAME_CATALOG_VERSION = 2
+    const val DEFAULT_PLANTS_COUNT = 4
 
     // Pet prices and unlock requirements
     const val LUNA_COINS = 4000

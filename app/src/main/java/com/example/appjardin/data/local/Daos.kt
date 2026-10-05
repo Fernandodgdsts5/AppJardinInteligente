@@ -13,6 +13,9 @@ interface PlantDao {
     @Query("SELECT * FROM plants")
     fun getAllPlants(): Flow<List<PlantEntity>>
 
+    @Query("SELECT * FROM plants")
+    suspend fun getAllPlantsSync(): List<PlantEntity>
+
     @Query("SELECT * FROM plants WHERE id = :id LIMIT 1")
     suspend fun getPlantById(id: Int): PlantEntity?
 

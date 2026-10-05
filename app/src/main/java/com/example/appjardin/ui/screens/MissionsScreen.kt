@@ -419,7 +419,8 @@ fun MissionsScreen(
                         in listOf("m20", "m21", "m22", "m23", "m24") -> (diagnosticsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         in listOf("m30", "m31", "m32") -> (manualWateringsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         in listOf("m40", "m41", "m42", "m43", "m44", "m45", "m46", "m47") -> (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
-                        "m50", "m53" -> (plants.size.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m50" -> if (plants.size > GameConfig.DEFAULT_PLANTS_COUNT) 1f else 0f
+                        "m53" -> ((plants.size - GameConfig.DEFAULT_PLANTS_COUNT).coerceIn(0, 4).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m51" -> (customImageCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m52" -> (thresholdEditsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m60" -> (renamedPetsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)

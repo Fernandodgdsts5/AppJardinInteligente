@@ -762,14 +762,11 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
             PlantFormDialog(
                 plantToEdit = null,
                 onDismiss = { showAddDialog = false },
-                onSave = { newPlant, imagePath ->
-                    val plantToSave = newPlant.copy(imagePath = imagePath)
-                    viewModel.addPlant(plantToSave)
-                    showAddDialog = false
-                },
+                onSave = { _, _ -> showAddDialog = false },
                 activeColor = activeColor,
                 context = context,
-                scope = scope
+                scope = scope,
+                viewModel = viewModel
             )
         }
 
@@ -778,13 +775,11 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
             PlantFormDialog(
                 plantToEdit = plantToEdit,
                 onDismiss = { plantToEdit = null },
-                onSave = { updatedPlant, newImagePath ->
-                    viewModel.updatePlant(updatedPlant, newImagePath)
-                    plantToEdit = null
-                },
+                onSave = { _, _ -> plantToEdit = null },
                 activeColor = activeColor,
                 context = context,
-                scope = scope
+                scope = scope,
+                viewModel = viewModel
             )
         }
     }
@@ -1186,7 +1181,8 @@ fun PlantFormDialog(
     onSave: (PlantEntity, String?) -> Unit,
     activeColor: Color,
     context: Context,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    viewModel: GardenViewModel
 ) {
     val isEditing = plantToEdit != null
     var name by remember { mutableStateOf(plantToEdit?.name ?: "") }
@@ -1369,7 +1365,8 @@ fun PlantFormDialog(
                     } else if (!(min < buena && buena < exceso)) {
                         errorMsg = "Regla requerida: Min < Buena < Exceso"
                     } else {
-                        val plantResult = if (isEditing) {
+                        scope.launch(Dispatchers.IO) {
+                            val plantResult = if (isEditing) {
                             plantToEdit.copy(
                                 name = name.trim(),
                                 humedadMinima = min,
@@ -1377,17 +1374,31 @@ fun PlantFormDialog(
                                 humedadExceso = exceso
                             )
                         } else {
-                            PlantEntity(
-                                name = name.trim(),
-                                humedadMinima = min,
-                                humedadBuena = buena,
-                                humedadExceso = exceso,
-                                defaultKey = null
-                            )
+                                PlantEntity(
+                                    name = name.trim(),
+                                    humedadMinima = min,
+                                    humedadBuena = buena,
+                                    humedadExceso = exceso,
+                                    imagePath = currentImagePath,
+                                    defaultKey = null
+                                )
+                            }
+                            val success = if (isEditing) {
+                                viewModel.updatePlant(plantResult, currentImagePath)
+                            } else {
+                                viewModel.addPlant(plantResult)
+                            }
+                            withContext(Dispatchers.Main) {
+                                if (success) {
+                                    cleanupTempUri(tempCameraUri)
+                                    cleanupTempUri(pendingUri)
+                                    onSave(plantResult, currentImagePath)
+                                    onDismiss()
+                                } else {
+                                    errorMsg = context.getString(R.string.error_duplicate_plant_name)
+                                }
+                            }
                         }
-                        cleanupTempUri(tempCameraUri)
-                        cleanupTempUri(pendingUri)
-                        onSave(plantResult, currentImagePath)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = activeColor)

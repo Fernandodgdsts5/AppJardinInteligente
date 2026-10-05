@@ -327,10 +327,8 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun addPlant(plant: PlantEntity) {
-        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            repository.insertPlant(plant)
-        }
+    suspend fun addPlant(plant: PlantEntity): Boolean {
+        return repository.insertPlant(plant)
     }
 
     fun deletePlant(plant: PlantEntity, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -348,11 +346,12 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updatePlant(plant: PlantEntity, newImagePath: String?) {
-        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            repository.updatePlant(plant, newImagePath)
+    suspend fun updatePlant(plant: PlantEntity, newImagePath: String?): Boolean {
+        val success = repository.updatePlant(plant, newImagePath)
+        if (success) {
             repository.incrementThresholdEdits()
         }
+        return success
     }
 
     fun addRewards(coins: Int, exp: Int) {
