@@ -1,13 +1,17 @@
 package com.example.appjardin.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.*
@@ -19,7 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,6 +38,9 @@ import com.example.appjardin.model.PetMood
 import com.example.appjardin.model.RewardType
 import com.example.appjardin.ui.theme.*
 import com.example.appjardin.viewmodel.GardenViewModel
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,10 +53,6 @@ fun MissionsScreen(
     val exp by viewModel.exp.collectAsStateWithLifecycle()
     val level by viewModel.level.collectAsStateWithLifecycle()
     val unlockedPets by viewModel.unlockedPets.collectAsStateWithLifecycle()
-    val plants by viewModel.allPlants.collectAsStateWithLifecycle()
-    val sessions by viewModel.allSessions.collectAsStateWithLifecycle()
-    val petNames by viewModel.petNames.collectAsStateWithLifecycle()
-
     val diagnosticsCount by viewModel.diagnosticsCount.collectAsStateWithLifecycle()
     val manualWateringsCount by viewModel.manualWateringsCount.collectAsStateWithLifecycle()
     val thresholdEditsCount by viewModel.thresholdEditsCount.collectAsStateWithLifecycle()
@@ -66,6 +71,9 @@ fun MissionsScreen(
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
     val state = viewModel.getMoistureState(telemetry?.humedad ?: 0f, plant)
+    val plants by viewModel.allPlants.collectAsStateWithLifecycle()
+    val allSessions by viewModel.allSessions.collectAsStateWithLifecycle()
+    val petNames by viewModel.petNames.collectAsStateWithLifecycle()
 
     val activeColor = when (state) {
         MoistureState.LOW_MOISTURE -> ColorLowMoisture
@@ -78,27 +86,25 @@ fun MissionsScreen(
     var selectedMissionDetail by remember { mutableStateOf<MissionDef?>(null) }
     var chestRewardDialogData by remember { mutableStateOf<String?>(null) }
 
-    val adequateSessionsCount = remember(sessions, plants) {
-        sessions.count { s ->
+    val userPlantsCount = remember(plants) { plants.count { it.isUserCreated } }
+    val customImageCount = remember(plants) { plants.count { !it.imagePath.isNullOrBlank() } }
+    val adequateSessionsCount = remember(allSessions, plants) {
+        allSessions.count { s ->
+            val finalHum = s.humidities.split(",").lastOrNull()?.toFloatOrNull() ?: 0f
             val p = plants.find { it.id == s.plantId }
-            if (p != null) {
-                val finalHum = s.humidities.split(",").lastOrNull()?.toFloatOrNull() ?: 0f
-                finalHum >= p.humedadBuena && finalHum <= p.humedadExceso
-            } else false
+            p != null && viewModel.getMoistureState(finalHum, p) == MoistureState.GOOD_MOISTURE
+        }
+    }
+    val renamedPetsCount = remember(petNames) {
+        Pet.entries.count { p ->
+            val name = petNames[p.id] ?: p.defaultName
+            name != p.defaultName && name != "Menta"
         }
     }
 
-    val customImageCount = remember(plants) {
-        plants.count { !it.imagePath.isNullOrBlank() }
-    }
-
-    val renamedPetsCount = remember(petNames) {
-        petNames.count { (Pet.entries.find { p -> p.id == it.key }?.defaultName) != it.value }
-    }
-
+    // ~50 Missions Catalog
     val missions = remember {
         listOf(
-            // Daily
             MissionDef("m1", "Regalo diario", "Reclama tu cofre diario de bienvenida.", true, 1, "Cofre Básico", RewardType.CHEST, rewardRes = R.drawable.chest_c1),
             MissionDef("m2", "Riego atento", "Realiza 1 riego manual en el jardín.", true, 1, "50 Monedas", RewardType.COINS, rewardAmount = 50, rewardRes = R.drawable.coin_stack),
             MissionDef("m3", "Planta feliz", "Mantén la humedad adecuada durante una sesión.", true, 1, "80 Monedas + 60 Exp", RewardType.BOTH, rewardAmount = 80, rewardExp = 60, rewardRes = R.drawable.exp_icon),
@@ -107,26 +113,22 @@ fun MissionsScreen(
             MissionDef("m6", "Revisar consejo", "Consulta el consejo de tu mascota hoy.", true, 1, "30 Monedas", RewardType.COINS, rewardAmount = 30, rewardRes = R.drawable.coin_stack),
             MissionDef("m7", "Abrir historial", "Revisa tus registros de riego en Historial.", true, 1, "40 Monedas", RewardType.COINS, rewardAmount = 40, rewardRes = R.drawable.coin_stack),
             
-            // Humidity records milestones
             MissionDef("m10", "Humedad ideal I", "Alcanza 10 registros de humedad adecuada.", false, 10, "200 Monedas + 150 Exp", RewardType.BOTH, rewardAmount = 200, rewardExp = 150, rewardRes = R.drawable.exp_icon),
             MissionDef("m11", "Humedad ideal II", "Alcanza 25 registros de humedad adecuada.", false, 25, "500 Monedas + 300 Exp", RewardType.BOTH, rewardAmount = 500, rewardExp = 300, rewardRes = R.drawable.exp_icon),
             MissionDef("m12", "Humedad ideal III", "Alcanza 50 registros de humedad adecuada.", false, 50, "Cofre Dorado", RewardType.CHEST, rewardRes = R.drawable.chest_c3),
             MissionDef("m13", "Humedad ideal IV", "Alcanza 100 registros de humedad adecuada.", false, 100, "2,000 Monedas + 1,500 Exp", RewardType.BOTH, rewardAmount = 2000, rewardExp = 1500, rewardRes = R.drawable.exp_icon),
             MissionDef("m14", "Humedad ideal V", "Alcanza 200 registros de humedad adecuada.", false, 200, "Cofre Mítico", RewardType.CHEST, rewardRes = R.drawable.chest_c5),
 
-            // Diagnostics milestones
             MissionDef("m20", "Diagnósticos I", "Completa 1 diagnóstico.", false, 1, "50 Monedas", RewardType.COINS, rewardAmount = 50, rewardRes = R.drawable.coin_stack),
             MissionDef("m21", "Diagnósticos II", "Completa 5 diagnósticos.", false, 5, "250 Monedas + 200 Exp", RewardType.BOTH, rewardAmount = 250, rewardExp = 200, rewardRes = R.drawable.exp_icon),
             MissionDef("m22", "Diagnósticos III", "Completa 10 diagnósticos.", false, 10, "Cofre Dorado", RewardType.CHEST, rewardRes = R.drawable.chest_c3),
             MissionDef("m23", "Diagnósticos IV", "Completa 25 diagnósticos.", false, 25, "1,500 Monedas + 1,000 Exp", RewardType.BOTH, rewardAmount = 1500, rewardExp = 1000, rewardRes = R.drawable.exp_icon),
             MissionDef("m24", "Diagnósticos V", "Completa 50 diagnósticos.", false, 50, "Cofre Mítico", RewardType.CHEST, rewardRes = R.drawable.chest_c5),
 
-            // Manual watering milestones
             MissionDef("m30", "Riegos manuales I", "Ejecuta 10 riegos manuales.", false, 10, "150 Monedas", RewardType.COINS, rewardAmount = 150, rewardRes = R.drawable.coin_stack),
             MissionDef("m31", "Riegos manuales II", "Ejecuta 50 riegos manuales.", false, 50, "800 Monedas + 500 Exp", RewardType.BOTH, rewardAmount = 800, rewardExp = 500, rewardRes = R.drawable.exp_icon),
             MissionDef("m32", "Riegos manuales III", "Ejecuta 100 riegos manuales.", false, 100, "Cofre Dorado", RewardType.CHEST, rewardRes = R.drawable.chest_c3),
 
-            // Streaks / Levels
             MissionDef("m40", "Nivel 3", "Alcanza el nivel 3.", false, 3, "100 Monedas + 100 Exp", RewardType.BOTH, rewardAmount = 100, rewardExp = 100, rewardRes = R.drawable.exp_icon),
             MissionDef("m41", "Nivel 7", "Alcanza el nivel 7.", false, 7, "300 Monedas + 250 Exp", RewardType.BOTH, rewardAmount = 300, rewardExp = 250, rewardRes = R.drawable.exp_icon),
             MissionDef("m42", "Nivel 10", "Alcanza el nivel 10.", false, 10, "Cofre Dorado", RewardType.CHEST, rewardRes = R.drawable.chest_c3),
@@ -136,23 +138,19 @@ fun MissionsScreen(
             MissionDef("m46", "Nivel 50", "Alcanza el nivel 50.", false, 50, "10,000 Monedas + 10,000 Exp", RewardType.BOTH, rewardAmount = 10000, rewardExp = 10000, rewardRes = R.drawable.exp_icon),
             MissionDef("m47", "Nivel 100", "Alcanza el nivel 100.", false, 100, "Cofre Mítico", RewardType.CHEST, rewardRes = R.drawable.chest_c5),
 
-            // Plants
             MissionDef("m50", "Primeros brotes", "Añade una planta a tu jardín.", false, 1, "100 Monedas", RewardType.COINS, rewardAmount = 100, rewardRes = R.drawable.coin_stack),
             MissionDef("m51", "Imagen personal", "Añade una foto personalizada a una planta.", false, 1, "150 Monedas + 100 Exp", RewardType.BOTH, rewardAmount = 150, rewardExp = 100, rewardRes = R.drawable.exp_icon),
             MissionDef("m52", "Botanista", "Edita los umbrales de alguna planta.", false, 1, "80 Monedas", RewardType.COINS, rewardAmount = 80, rewardRes = R.drawable.coin_stack),
             MissionDef("m53", "Coleccionista", "Añade 4 plantas diferentes al jardín.", false, 4, "500 Monedas + 400 Exp", RewardType.BOTH, rewardAmount = 500, rewardExp = 400, rewardRes = R.drawable.exp_icon),
 
-            // Pets
             MissionDef("m60", "Mi mascota", "Personaliza el nombre de cualquier mascota.", false, 1, "100 Monedas", RewardType.COINS, rewardAmount = 100, rewardRes = R.drawable.coin_stack),
             MissionDef("m61", "Cariñoso", "Cambia de mascota seleccionada 3 veces.", false, 3, "90 Monedas", RewardType.COINS, rewardAmount = 90, rewardRes = R.drawable.coin_stack),
 
-            // Economy
             MissionDef("m70", "Ahorrador I", "Acumula 1,000 monedas.", false, 1000, "Cofre Dorado", RewardType.CHEST, rewardRes = R.drawable.chest_c3),
             MissionDef("m71", "Ahorrador II", "Acumula 5,000 monedas.", false, 5000, "2,000 Monedas + 1,500 Exp", RewardType.BOTH, rewardAmount = 2000, rewardExp = 1500, rewardRes = R.drawable.exp_icon),
             MissionDef("m72", "Ahorrador III", "Acumula 10,000 monedas.", false, 10000, "Cofre Mítico", RewardType.CHEST, rewardRes = R.drawable.chest_c5),
             MissionDef("m73", "Inversor", "Gasta monedas desbloqueando contenido.", false, 1, "100 Exp", RewardType.BOTH, rewardExp = 100, rewardRes = R.drawable.exp_icon),
 
-            // Chests & BLE
             MissionDef("m80", "Abre cofres I", "Reclama 5 cofres en total.", false, 5, "500 Monedas + 500 Exp", RewardType.BOTH, rewardAmount = 500, rewardExp = 500, rewardRes = R.drawable.exp_icon),
             MissionDef("m81", "Abre cofres II", "Reclama 20 cofres en total.", false, 20, "Cofre Mítico", RewardType.CHEST, rewardRes = R.drawable.chest_c5),
             MissionDef("m90", "Conexión estable", "Conecta tu jardín inteligente por BLE.", false, 1, "100 Monedas + 100 Exp", RewardType.BOTH, rewardAmount = 100, rewardExp = 100, rewardRes = R.drawable.exp_icon)
@@ -419,8 +417,8 @@ fun MissionsScreen(
                         in listOf("m20", "m21", "m22", "m23", "m24") -> (diagnosticsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         in listOf("m30", "m31", "m32") -> (manualWateringsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         in listOf("m40", "m41", "m42", "m43", "m44", "m45", "m46", "m47") -> (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
-                        "m50" -> if (plants.size > GameConfig.DEFAULT_PLANTS_COUNT) 1f else 0f
-                        "m53" -> ((plants.size - GameConfig.DEFAULT_PLANTS_COUNT).coerceIn(0, 4).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        "m50" -> if (userPlantsCount > GameConfig.DEFAULT_PLANTS_COUNT) 1f else 0f
+                        "m53" -> ((userPlantsCount - GameConfig.DEFAULT_PLANTS_COUNT).coerceIn(0, 4).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m51" -> (customImageCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m52" -> (thresholdEditsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m60" -> (renamedPetsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
@@ -439,18 +437,19 @@ fun MissionsScreen(
                         isClaimed = isClaimed,
                         onClick = { selectedMissionDetail = mission },
                         onClaim = {
-                            viewModel.claimMission(
-                                missionId = mission.id,
-                                rewardType = mission.rewardType,
-                                rewardAmount = mission.rewardAmount,
-                                rewardExp = mission.rewardExp,
-                                isDaily = mission.isDaily
-                            ) { success ->
-                                if (success) {
-                                    if (mission.rewardType == RewardType.CHEST) {
-                                        chestRewardDialogData = "¡Cofre abierto con éxito!"
-                                    } else {
-                                        Toast.makeText(context, "¡Recompensa reclamada!", Toast.LENGTH_SHORT).show()
+                            val isC5 = mission.rewardRes == R.drawable.chest_c5
+                            if (isC5) {
+                                selectedMissionDetail = mission
+                            } else {
+                                viewModel.claimMission(
+                                    missionId = mission.id,
+                                    rewardType = mission.rewardType,
+                                    rewardAmount = mission.rewardAmount,
+                                    rewardExp = mission.rewardExp,
+                                    isDaily = mission.isDaily
+                                ) { success ->
+                                    if (success) {
+                                        chestRewardDialogData = "¡Recompensa reclamada con éxito!"
                                     }
                                 }
                             }
@@ -461,6 +460,7 @@ fun MissionsScreen(
         }
     }
 
+    // Chest reward dialog
     if (chestRewardDialogData != null) {
         AlertDialog(
             onDismissRequest = { chestRewardDialogData = null },
@@ -477,8 +477,42 @@ fun MissionsScreen(
         )
     }
 
+    // Mission Detail Bottom Sheet
     if (selectedMissionDetail != null) {
         val mission = selectedMissionDetail!!
+        val isClaimed by viewModel.getMissionClaimedFlow(mission.id, mission.isDaily).collectAsStateWithLifecycle(initialValue = false)
+        
+        val progress = when (mission.id) {
+            "m1" -> 1f
+            "m2" -> if (manualWateredToday) 1f else 0f
+            "m3" -> if (happyPlantToday) 1f else 0f
+            "m4" -> if (diagnosticsToday) 1f else 0f
+            "m5" -> (((if (manualWateredToday) 1 else 0) + (if (happyPlantToday) 1 else 0) + (if (diagnosticsToday) 1 else 0)).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m6" -> if (adviceShownToday) 1f else 0f
+            "m7" -> if (historyOpenedToday) 1f else 0f
+            in listOf("m10", "m11", "m12", "m13", "m14") -> (adequateSessionsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            in listOf("m20", "m21", "m22", "m23", "m24") -> (diagnosticsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            in listOf("m30", "m31", "m32") -> (manualWateringsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            in listOf("m40", "m41", "m42", "m43", "m44", "m45", "m46", "m47") -> (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m50" -> if (userPlantsCount > GameConfig.DEFAULT_PLANTS_COUNT) 1f else 0f
+            "m53" -> ((userPlantsCount - GameConfig.DEFAULT_PLANTS_COUNT).coerceIn(0, 4).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m51" -> (customImageCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m52" -> (thresholdEditsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m60" -> (renamedPetsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m61" -> (petSelectionChangesCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            in listOf("m70", "m71", "m72") -> (coinsEarnedTotal.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m73" -> if (coinsSpentPetTotal > 0) 1f else 0f
+            in listOf("m80", "m81") -> (chestsOpenedCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            "m90" -> if (bleConnectedOnce) 1f else 0f
+            else -> 0f
+        }
+        val isCompleted = progress >= 1f
+        val isC5 = mission.rewardRes == R.drawable.chest_c5
+        val lockedPets = remember(unlockedPets) {
+            Pet.entries.filter { it.isLocked && it.id != "reygeko" && !unlockedPets.contains(it.id) }
+        }
+        var selectedChosenPetId by remember { mutableStateOf<String?>(null) }
+
         ModalBottomSheet(
             onDismissRequest = { selectedMissionDetail = null },
             containerColor = Color.White
@@ -486,34 +520,219 @@ fun MissionsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = mission.title,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkText
-                )
+                // Reward block: Images, quantities, names centered
+                val nf = NumberFormat.getNumberInstance(Locale.getDefault())
+                when (mission.rewardType) {
+                    RewardType.COINS -> {
+                        if (mission.rewardAmount > 0) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.coin_stack),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(80.dp),
+                                    contentScale = ContentScale.Fit
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = nf.format(mission.rewardAmount), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkText)
+                                Text(text = "Monedas", fontSize = 13.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                    RewardType.BOTH -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            if (mission.rewardAmount > 0) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.coin_stack),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(80.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = nf.format(mission.rewardAmount), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkText)
+                                    Text(text = "Monedas", fontSize = 13.sp, color = Color.Gray)
+                                }
+                            }
+                            if (mission.rewardExp > 0) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.exp_icon),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(80.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = nf.format(mission.rewardExp), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkText)
+                                    Text(text = "Experiencia", fontSize = 13.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+                    }
+                    RewardType.CHEST -> {
+                        val chestName = when (mission.rewardRes) {
+                            R.drawable.chest_c1 -> stringResource(R.string.chest_name_c1)
+                            R.drawable.chest_c2 -> stringResource(R.string.chest_name_c2)
+                            R.drawable.chest_c3 -> stringResource(R.string.chest_name_c3)
+                            R.drawable.chest_c4 -> stringResource(R.string.chest_name_c4)
+                            R.drawable.chest_c5 -> stringResource(R.string.chest_name_c5)
+                            else -> "Cofre"
+                        }
+                        val rangeText = when (mission.rewardRes) {
+                            R.drawable.chest_c1 -> "${nf.format(GameConfig.CHEST_C1_COINS.first)} – ${nf.format(GameConfig.CHEST_C1_COINS.last)} monedas"
+                            R.drawable.chest_c2 -> "${nf.format(GameConfig.CHEST_C2_COINS.first)} – ${nf.format(GameConfig.CHEST_C2_COINS.last)} monedas\n${nf.format(GameConfig.CHEST_C2_EXP.first)} – ${nf.format(GameConfig.CHEST_C2_EXP.last)} exp"
+                            R.drawable.chest_c3 -> "${nf.format(GameConfig.CHEST_C3_COINS.first)} – ${nf.format(GameConfig.CHEST_C3_COINS.last)} monedas"
+                            R.drawable.chest_c4 -> "Contiene a Luna"
+                            R.drawable.chest_c5 -> "${nf.format(GameConfig.CHEST_C5_COINS.first)} – ${nf.format(GameConfig.CHEST_C5_COINS.last)} monedas\n${nf.format(GameConfig.CHEST_C5_EXP.first)} – ${nf.format(GameConfig.CHEST_C5_EXP.last)} exp + Mascota a elegir"
+                            else -> ""
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Image(
+                                painter = painterResource(id = mission.rewardRes),
+                                contentDescription = chestName,
+                                modifier = Modifier.size(110.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(text = rangeText, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DarkText, textAlign = TextAlign.Center)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(text = chestName, fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Mission Description
                 Text(
                     text = mission.description,
                     fontSize = 15.sp,
-                    color = Color.Gray
+                    color = DarkText,
+                    textAlign = TextAlign.Center
                 )
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
-                Text(
-                    text = "Premio: ${mission.rewardTextRes}",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = activeColor
-                )
-                Button(
-                    onClick = { selectedMissionDetail = null },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = activeColor)
-                ) {
-                    Text("Cerrar", color = Color.White)
+
+                // Only for c5 chest: Locked pets grid if any remain
+                if (isC5 && lockedPets.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isCompleted && !isClaimed) stringResource(R.string.c5_choose_pet_prompt) else stringResource(R.string.c5_choose_pet_preview),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isCompleted && !isClaimed) activeColor else Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    lockedPets.chunked(2).forEach { rowPets ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowPets.forEach { pet ->
+                                val isChosen = selectedChosenPetId == pet.id
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .border(
+                                            BorderStroke(
+                                                width = if (isChosen) 2.dp else 1.dp,
+                                                color = if (isChosen) activeColor else Color.LightGray.copy(alpha = 0.5f)
+                                            ),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .background(if (isChosen) activeColor.copy(alpha = 0.1f) else Color.White)
+                                        .then(
+                                            if (isCompleted && !isClaimed) {
+                                                Modifier.clickable { selectedChosenPetId = pet.id }
+                                            } else Modifier
+                                        )
+                                        .padding(10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = pet.getDrawable(PetMood.FELIZ)),
+                                            contentDescription = pet.speciesName,
+                                            modifier = Modifier.size(50.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = pet.defaultName,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkText
+                                        )
+                                    }
+                                }
+                            }
+                            if (rowPets.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { selectedMissionDetail = null },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray.copy(alpha = 0.4f))
+                    ) {
+                        Text("Cerrar", color = DarkText, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (isCompleted && !isClaimed) {
+                        val canClaimC5 = !isC5 || lockedPets.isEmpty() || selectedChosenPetId != null
+                        Button(
+                            onClick = {
+                                if (canClaimC5) {
+                                    selectedMissionDetail = null
+                                    viewModel.claimMission(
+                                        missionId = mission.id,
+                                        rewardType = mission.rewardType,
+                                        rewardAmount = mission.rewardAmount,
+                                        rewardExp = mission.rewardExp,
+                                        isDaily = mission.isDaily,
+                                        chosenPetId = selectedChosenPetId
+                                    ) { success ->
+                                        if (success) {
+                                            chestRewardDialogData = "¡Recompensa reclamada con éxito!"
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Elige una mascota para continuar", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            enabled = canClaimC5,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(25.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = activeColor)
+                        ) {
+                            Text("Reclamar", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -530,6 +749,7 @@ fun MissionCard(
     onClaim: () -> Unit
 ) {
     val isCompleted = progress >= 1f
+    val isC5 = mission.rewardRes == R.drawable.chest_c5
 
     Card(
         modifier = Modifier
@@ -575,6 +795,7 @@ fun MissionCard(
                 )
             }
 
+            // Reward & Claim button
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -595,7 +816,13 @@ fun MissionCard(
                     )
                 } else if (isCompleted) {
                     Button(
-                        onClick = onClaim,
+                        onClick = {
+                            if (isC5) {
+                                onClick() // Open detail so user can choose pet
+                            } else {
+                                onClaim()
+                            }
+                        },
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = activeColor),
