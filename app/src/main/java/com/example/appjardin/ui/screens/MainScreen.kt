@@ -89,13 +89,14 @@ fun MainScreen(
     val context = LocalContext.current
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
+    val currentPlant = plant
     val selectedPet by viewModel.selectedPet.collectAsStateWithLifecycle()
     
     val humidity = telemetry?.humedad ?: 0f
-    val state = viewModel.getMoistureState(humidity, plant)
+    val state = viewModel.getMoistureState(humidity, currentPlant)
     
     // Always use ColorVerdeAlegre when no plant is configured
-    val targetColor = if (plant == null) {
+    val targetColor = if (currentPlant == null) {
         ColorVerdeAlegre
     } else {
         when (state) {
@@ -109,7 +110,7 @@ fun MainScreen(
     
     val activeColor by animateColorAsState(targetValue = targetColor, label = "ColorAnimation")
     
-    val stateText = if (plant == null) {
+    val stateText = if (currentPlant == null) {
         "Sin planta"
     } else {
         when (state) {
@@ -121,12 +122,12 @@ fun MainScreen(
         }
     }
 
-    val isExcess = telemetry?.exceso == true || (plant != null && humidity > plant!!.humedadExceso)
+    val isExcess = telemetry?.exceso == true || (currentPlant != null && humidity > currentPlant.humedadExceso)
     val pumpOn by viewModel.pumpOn.collectAsStateWithLifecycle()
 
-    val defaultRes = PlantImageStorage.getDefaultDrawableRes(plant?.defaultKey)
+    val defaultRes = PlantImageStorage.getDefaultDrawableRes(currentPlant?.defaultKey)
     val plantImageModel = when {
-        plant != null && !plant!!.imagePath.isNullOrBlank() -> File(plant!!.imagePath!!)
+        currentPlant != null && !currentPlant.imagePath.isNullOrBlank() -> File(currentPlant.imagePath)
         defaultRes != null -> defaultRes
         else -> R.drawable.planta
     }
@@ -350,7 +351,7 @@ fun MainScreen(
 
                 // 3 & 4. BOTTOM BUTTONS (Watering + Diagnose) positioned at 8dp from bottom edge
                 val (buttonText, isEnabled, buttonAction) = when {
-                    plant == null -> {
+                    currentPlant == null -> {
                         Triple("ELEGIR PLANTA", true) { onNavigateToSettings() }
                     }
                     isExcess -> {
@@ -371,9 +372,9 @@ fun MainScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (plant != null && isExcess && !pumpOn) {
+                    if (currentPlant != null && isExcess && !pumpOn) {
                         Text(
-                            text = "El riego manual está bloqueado por exceso de humedad (> ${plant!!.humedadExceso}%)",
+                            text = "El riego manual está bloqueado por exceso de humedad (> ${currentPlant.humedadExceso}%)",
                             color = ColorExcessMoisture,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
