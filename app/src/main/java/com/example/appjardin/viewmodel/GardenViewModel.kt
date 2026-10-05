@@ -444,16 +444,26 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     }
     
     fun togglePump(turnOn: Boolean) {
-        _pumpOn.value = turnOn
-        val action = if (turnOn) "regar" else "detener"
-        Log.d("JardinBLE", "Enviando comando: $action")
-        if (turnOn && connectionState.value == BluetoothProfile.STATE_CONNECTED) {
+        val isConnected = connectionState.value == BluetoothProfile.STATE_CONNECTED
+        val plant = selectedPlant.value
+        val isExcess = plant != null && lastKnownHumidity > plant.humedadExceso
+
+        if (turnOn) {
+            if (!isConnected || isExcess) {
+                return
+            }
+            _pumpOn.value = true
+            Log.d("JardinBLE", "Enviando comando: regar")
             viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
                 repository.recordDailyAction("manual_watering", getTodayStr())
                 repository.incrementManualWaterings()
             }
+            bleManager.sendWateringAction("regar")
+        } else {
+            _pumpOn.value = false
+            Log.d("JardinBLE", "Enviando comando: detener")
+            bleManager.sendWateringAction("detener")
         }
-        bleManager.sendWateringAction(action)
     }
 
     fun getMoistureState(humidity: Float, plant: PlantEntity?): MoistureState {
