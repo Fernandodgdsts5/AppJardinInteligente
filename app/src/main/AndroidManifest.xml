@@ -24,6 +24,7 @@
 
     <application
         android:allowBackup="true"
+        tools:replace="android:allowBackup,android:label,android:icon,android:theme,android:roundIcon"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"

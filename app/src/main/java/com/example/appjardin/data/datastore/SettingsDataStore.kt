@@ -131,7 +131,14 @@ class SettingsDataStore(private val context: Context) {
 
     fun getPetNameFlow(petId: String, defaultName: String): Flow<String> {
         val key = getPetNameKey(petId)
-        return context.dataStore.data.map { preferences -> preferences[key] ?: defaultName }
+        return context.dataStore.data.map { preferences ->
+            val stored = preferences[key]
+            if (petId == "larva" && stored != null && stored.equals("Tito", ignoreCase = true)) {
+                defaultName
+            } else {
+                stored ?: defaultName
+            }
+        }
     }
 
     suspend fun checkAndMigrateLegacyPetName() {
@@ -142,6 +149,13 @@ class SettingsDataStore(private val context: Context) {
                 preferences[getPetNameKey(currentPetId)] = legacyName
             }
             preferences.remove(LEGACY_PET_NAME)
+
+            // Cleanup old default name "Tito" for larva if saved
+            val larvaKey = getPetNameKey("larva")
+            val larvaName = preferences[larvaKey]
+            if (larvaName != null && larvaName.equals("Tito", ignoreCase = true)) {
+                preferences.remove(larvaKey)
+            }
         }
     }
 

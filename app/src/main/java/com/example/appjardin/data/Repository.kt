@@ -1,9 +1,11 @@
 package com.example.appjardin.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.example.appjardin.data.datastore.SettingsDataStore
 import com.example.appjardin.data.local.AppDatabase
+import com.example.appjardin.data.local.DiagnosisEntity
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.data.local.SessionEntity
 import com.example.appjardin.model.RewardType
@@ -12,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import java.io.File
+import java.io.FileOutputStream
 import java.text.Normalizer
 import java.text.SimpleDateFormat
 import java.util.*
@@ -20,10 +24,17 @@ class Repository(private val context: Context) {
     private val database = AppDatabase.getDatabase(context)
     private val plantDao = database.plantDao()
     private val sessionDao = database.sessionDao()
+    private val diagnosisDao = database.diagnosisDao()
     private val settingsDataStore = SettingsDataStore(context)
 
     val allPlants: Flow<List<PlantEntity>> = plantDao.getAllPlants()
     val allSessions: Flow<List<SessionEntity>> = sessionDao.getAllSessions()
+    val allDiagnostics: Flow<List<DiagnosisEntity>> = diagnosisDao.getAllDiagnostics()
+    val totalDiagnosticsCountFlow: Flow<Int> = diagnosisDao.getTotalDiagnosticsCountFlow()
+
+    fun getTodayDiagnosticsCountFlow(startOfDayMs: Long, endOfDayMs: Long): Flow<Int> {
+        return diagnosisDao.getTodayDiagnosticsCountFlow(startOfDayMs, endOfDayMs)
+    }
     
     val userNameFlow: Flow<String> = settingsDataStore.userNameFlow
     val selectedPlantIdFlow: Flow<Int> = settingsDataStore.selectedPlantIdFlow
@@ -268,6 +279,85 @@ class Repository(private val context: Context) {
             settingsDataStore.unlockPet(petId)
         } catch (e: Exception) {
             Log.e("Repository", "Error unlocking pet", e)
+        }
+    }
+
+    suspend fun getDiagnosisById(id: Int): DiagnosisEntity? = withContext(Dispatchers.IO) {
+        try {
+            diagnosisDao.getDiagnosisById(id)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun saveDiagnosis(
+        plantId: Int?,
+        plantName: String,
+        bitmap: Bitmap,
+        result: String,
+        confidence: Float,
+        modelVersion: String
+    ): Long = withContext(Dispatchers.IO) {
+        try {
+            val fileName = "diag_${System.currentTimeMillis()}.jpg"
+            val file = File(context.filesDir, "diagnosis")
+            if (!file.exists()) file.mkdirs()
+            val imgFile = File(file, fileName)
+            FileOutputStream(imgFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
+            
+            val entity = DiagnosisEntity(
+                plantId = plantId,
+                plantName = plantName,
+                imagePath = imgFile.absolutePath,
+                result = result,
+                confidence = confidence,
+                createdAt = System.currentTimeMillis(),
+                modelVersion = modelVersion
+            )
+            diagnosisDao.insertDiagnosis(entity)
+        } catch (e: Exception) {
+            Log.e("Repository", "Error saving diagnosis", e)
+            -1L
+        }
+    }
+
+    suspend fun cleanupFakeDiagnostics(): Int = withContext(Dispatchers.IO) {
+        try {
+            val fakes = diagnosisDao.getFakeDiagnostics()
+            for (fake in fakes) {
+                if (!fake.imagePath.isNullOrBlank()) {
+                    val file = File(fake.imagePath)
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            }
+            val count = diagnosisDao.deleteFakeDiagnostics()
+            Log.d("Repository", "Cleaned up $count fake diagnostics")
+            count
+        } catch (e: Exception) {
+            Log.e("Repository", "Error cleaning up fake diagnostics", e)
+            0
+        }
+    }
+
+    suspend fun deleteDiagnostics(ids: List<Int>) = withContext(Dispatchers.IO) {
+        try {
+            val list = diagnosisDao.getDiagnosticsByIds(ids)
+            for (item in list) {
+                if (!item.imagePath.isNullOrBlank()) {
+                    val file = File(item.imagePath)
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                }
+            }
+            diagnosisDao.deleteDiagnosticsByIds(ids)
+            Log.d("Repository", "Deleted diagnostics IDs: $ids")
+        } catch (e: Exception) {
+            Log.e("Repository", "Error deleting diagnostics", e)
         }
     }
 

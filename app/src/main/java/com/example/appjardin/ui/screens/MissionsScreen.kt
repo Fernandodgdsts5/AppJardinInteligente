@@ -64,7 +64,8 @@ fun MissionsScreen(
 
     val manualWateredToday by viewModel.getDailyActionFlow("manual_watering").collectAsStateWithLifecycle(initialValue = false)
     val happyPlantToday by viewModel.getDailyActionFlow("happy_plant").collectAsStateWithLifecycle(initialValue = false)
-    val diagnosticsToday by viewModel.getDailyActionFlow("diagnosis").collectAsStateWithLifecycle(initialValue = false)
+    val todayDiagnosticsCount by viewModel.todayDiagnosticsCount.collectAsStateWithLifecycle()
+    val diagnosticsToday = todayDiagnosticsCount > 0
     val adviceShownToday by viewModel.getDailyActionFlow("advice_shown").collectAsStateWithLifecycle(initialValue = false)
     val historyOpenedToday by viewModel.getDailyActionFlow("history_opened").collectAsStateWithLifecycle(initialValue = false)
 
@@ -414,7 +415,7 @@ fun MissionsScreen(
                         "m6" -> if (adviceShownToday) 1f else 0f
                         "m7" -> if (historyOpenedToday) 1f else 0f
                         in listOf("m10", "m11", "m12", "m13", "m14") -> (adequateSessionsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
-                        in listOf("m20", "m21", "m22", "m23", "m24") -> (diagnosticsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+                        in listOf("m20", "m21", "m22", "m23", "m24") -> (minOf(diagnosticsCount, mission.target).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         in listOf("m30", "m31", "m32") -> (manualWateringsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         in listOf("m40", "m41", "m42", "m43", "m44", "m45", "m46", "m47") -> (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
                         "m50" -> if (userPlantsCount > GameConfig.DEFAULT_PLANTS_COUNT) 1f else 0f
@@ -491,7 +492,7 @@ fun MissionsScreen(
             "m6" -> if (adviceShownToday) 1f else 0f
             "m7" -> if (historyOpenedToday) 1f else 0f
             in listOf("m10", "m11", "m12", "m13", "m14") -> (adequateSessionsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
-            in listOf("m20", "m21", "m22", "m23", "m24") -> (diagnosticsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
+            in listOf("m20", "m21", "m22", "m23", "m24") -> (minOf(diagnosticsCount, mission.target).toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
             in listOf("m30", "m31", "m32") -> (manualWateringsCount.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
             in listOf("m40", "m41", "m42", "m43", "m44", "m45", "m46", "m47") -> (level.toFloat() / mission.target.toFloat()).coerceIn(0f, 1f)
             "m50" -> if (userPlantsCount > GameConfig.DEFAULT_PLANTS_COUNT) 1f else 0f

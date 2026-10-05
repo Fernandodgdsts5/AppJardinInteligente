@@ -1,6 +1,7 @@
 package com.example.appjardin.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.appjardin.R
+import com.example.appjardin.data.local.DiagnosisEntity
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.data.local.SessionEntity
 import com.example.appjardin.model.MoistureState
@@ -48,9 +50,10 @@ private val HISTORY_CARD_HEIGHT = 260.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(viewModel: GardenViewModel) {
+fun HistoryScreen(viewModel: GardenViewModel, onNavigateToDiagnosisDetail: (Int) -> Unit) {
     val context = LocalContext.current
     val sessions by viewModel.allSessions.collectAsStateWithLifecycle()
+    val diagnostics by viewModel.allDiagnostics.collectAsStateWithLifecycle()
     val plants by viewModel.allPlants.collectAsStateWithLifecycle()
     val selectedPet by viewModel.selectedPet.collectAsStateWithLifecycle()
     val petNames by viewModel.petNames.collectAsStateWithLifecycle()
@@ -58,7 +61,11 @@ fun HistoryScreen(viewModel: GardenViewModel) {
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
 
     val selectedSessionIds by viewModel.selectedSessionIds.collectAsStateWithLifecycle()
-    val isSelectionMode by viewModel.isSessionSelectionMode.collectAsStateWithLifecycle()
+    val isSessionSelectionMode by viewModel.isSessionSelectionMode.collectAsStateWithLifecycle()
+
+    val selectedDiagnosisIds by viewModel.selectedDiagnosisIds.collectAsStateWithLifecycle()
+    val isDiagnosisSelectionMode by viewModel.isDiagnosisSelectionMode.collectAsStateWithLifecycle()
+
     val activeSessionId by viewModel.activeSessionId.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -84,13 +91,24 @@ fun HistoryScreen(viewModel: GardenViewModel) {
     var sessionIdDetail by rememberSaveable { mutableStateOf<Int?>(null) }
     var showMultiDeleteDialog by remember { mutableStateOf(false) }
 
+    val currentSelectionMode = if (selectedTab == 0) isSessionSelectionMode else isDiagnosisSelectionMode
+    val currentSelectedCount = if (selectedTab == 0) selectedSessionIds.size else selectedDiagnosisIds.size
+
+    // Handle system back button during selection mode
+    if (currentSelectionMode) {
+        BackHandler {
+            if (selectedTab == 0) viewModel.clearSessionSelection()
+            else viewModel.clearDiagnosisSelection()
+        }
+    }
+
     Scaffold(
         topBar = {
-            if (isSelectionMode) {
-                val selectionCountText = if (selectedSessionIds.size == 1) {
+            if (currentSelectionMode) {
+                val selectionCountText = if (currentSelectedCount == 1) {
                     stringResource(R.string.selection_count_singular)
                 } else {
-                    stringResource(R.string.selection_count_plural, selectedSessionIds.size)
+                    stringResource(R.string.selection_count_plural, currentSelectedCount)
                 }
                 TopAppBar(
                     title = {
@@ -103,7 +121,10 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                     },
                     navigationIcon = {
                         IconButton(
-                            onClick = { viewModel.clearSessionSelection() },
+                            onClick = {
+                                if (selectedTab == 0) viewModel.clearSessionSelection()
+                                else viewModel.clearDiagnosisSelection()
+                            },
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
@@ -115,7 +136,10 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                     },
                     actions = {
                         IconButton(
-                            onClick = { viewModel.selectAllSessions(sessions.map { it.id }) },
+                            onClick = {
+                                if (selectedTab == 0) viewModel.selectAllSessions(sessions.map { it.id })
+                                else viewModel.selectAllDiagnostics(diagnostics.map { it.id })
+                            },
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
@@ -142,7 +166,7 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                     title = {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = "Historial de Riego",
+                                text = "Historial",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp
@@ -171,7 +195,11 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                 tabs.forEachIndexed { index, title ->
                     val isSelected = selectedTab == index
                     Button(
-                        onClick = { selectedTab = index },
+                        onClick = {
+                            selectedTab = index
+                            viewModel.clearSessionSelection()
+                            viewModel.clearDiagnosisSelection()
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp),
@@ -226,10 +254,10 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                                 petNames = petNames,
                                 viewModel = viewModel,
                                 activeColor = activeColor,
-                                isSelectionMode = isSelectionMode,
+                                isSelectionMode = isSessionSelectionMode,
                                 isSelected = isSelected,
                                 onClick = {
-                                    if (isSelectionMode) {
+                                    if (isSessionSelectionMode) {
                                         viewModel.toggleSessionSelection(session.id)
                                     } else {
                                         sessionIdDetail = session.id
@@ -243,30 +271,62 @@ fun HistoryScreen(viewModel: GardenViewModel) {
                     }
                 }
             } else {
-                // Diagnóstico Tab (Empty state)
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(24.dp)
+                // Diagnóstico Tab
+                if (diagnostics.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Assessment,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
-                        )
-                        Text(
-                            text = stringResource(R.string.empty_diagnosis),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Gray
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Assessment,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = Color.Gray
+                            )
+                            Text(
+                                text = stringResource(R.string.empty_diagnosis),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = diagnostics,
+                            key = { it.id }
+                        ) { diag ->
+                            val isSelected = selectedDiagnosisIds.contains(diag.id)
+                            DiagnosisHistoryCard(
+                                diagnosis = diag,
+                                isSelectionMode = isDiagnosisSelectionMode,
+                                isSelected = isSelected,
+                                onClick = {
+                                    if (isDiagnosisSelectionMode) {
+                                        viewModel.toggleDiagnosisSelection(diag.id)
+                                    } else {
+                                        onNavigateToDiagnosisDetail(diag.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    viewModel.toggleDiagnosisSelection(diag.id)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -300,23 +360,44 @@ fun HistoryScreen(viewModel: GardenViewModel) {
 
         // Multi-delete Confirmation Dialog
         if (showMultiDeleteDialog) {
+            val deleteTitle = if (selectedTab == 0) {
+                stringResource(R.string.delete_sessions_title, selectedSessionIds.size)
+            } else {
+                when {
+                    selectedDiagnosisIds.size == diagnostics.size -> stringResource(R.string.delete_all_diagnostics_title)
+                    selectedDiagnosisIds.size == 1 -> stringResource(R.string.delete_single_diagnostic_title)
+                    else -> stringResource(R.string.delete_diagnostics_title, selectedDiagnosisIds.size)
+                }
+            }
+
+            val deleteText = if (selectedTab == 0) {
+                "Se eliminarán los registros seleccionados permanentemente."
+            } else {
+                stringResource(R.string.delete_diagnostics_text)
+            }
+
             AlertDialog(
                 onDismissRequest = { showMultiDeleteDialog = false },
-                title = { Text(stringResource(R.string.delete_sessions_title, selectedSessionIds.size), fontWeight = FontWeight.Bold) },
-                text = { Text("Se eliminarán los registros seleccionados permanentemente.") },
+                title = { Text(deleteTitle, fontWeight = FontWeight.Bold) },
+                text = { Text(deleteText) },
                 confirmButton = {
                     Button(
                         onClick = {
                             showMultiDeleteDialog = false
-                            viewModel.deleteSelectedSessions(
-                                activeSessionId = activeSessionId,
-                                onActiveExcluded = {
-                                    Toast.makeText(context, context.getString(R.string.active_session_warning), Toast.LENGTH_LONG).show()
-                                }
-                            )
-                            Toast.makeText(context, "Registros eliminados", Toast.LENGTH_SHORT).show()
+                            if (selectedTab == 0) {
+                                viewModel.deleteSelectedSessions(
+                                    activeSessionId = activeSessionId,
+                                    onActiveExcluded = {
+                                        Toast.makeText(context, context.getString(R.string.active_session_warning), Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                                Toast.makeText(context, "Registros eliminados", Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.deleteSelectedDiagnostics()
+                                Toast.makeText(context, "Diagnósticos eliminados", Toast.LENGTH_SHORT).show()
+                            }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorDelete)
                     ) {
                         Text("Eliminar", color = Color.White)
                     }
@@ -394,6 +475,7 @@ fun SessionHistoryItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Left text info (weight 1f) with proper spacing and no forced vertical clipping
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -465,6 +547,7 @@ fun SessionHistoryItem(
                 }
             }
 
+            // Right image (max 38% of card width, ContentScale.Fit)
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -604,16 +687,18 @@ fun SessionDetailBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedButton(
+                Button(
                     onClick = { showDeleteDialog = true },
                     modifier = Modifier
                         .weight(1f)
                         .height(50.dp),
                     shape = RoundedCornerShape(25.dp),
-                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.error),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ColorDelete,
+                        contentColor = Color.White
+                    )
                 ) {
-                    Text("Eliminar", fontWeight = FontWeight.Bold)
+                    Text("Eliminar", fontWeight = FontWeight.Bold, color = Color.White)
                 }
 
                 Button(
@@ -652,7 +737,7 @@ fun SessionDetailBottomSheet(
                             }
                         )
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorDelete)
                 ) {
                     Text("Eliminar", color = Color.White)
                 }

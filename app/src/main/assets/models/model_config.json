@@ -1,0 +1,13 @@
+{
+    "imgsz": 224,
+    "labels": [
+        "healthy",
+        "sick"
+    ],
+    "labelMap": {
+        "healthy": "HEALTHY",
+        "sick": "UNHEALTHY"
+    },
+    "normalization": "RGB_0_1",
+    "modelVersion": "debug-fake"
+}

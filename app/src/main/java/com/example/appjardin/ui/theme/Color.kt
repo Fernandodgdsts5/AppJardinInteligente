@@ -17,3 +17,4 @@ val ColorExcessMoisture = Color(0xFFD32F2F)  // Dark Red
 val CreamBackground = Color(0xFFF5F1E8)
 val DarkText = Color(0xFF212121)
 val SecondaryDarkText = Color(0xFF555555)
+val ColorDelete = Color(0xFFD32F2F)

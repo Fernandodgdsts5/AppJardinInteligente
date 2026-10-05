@@ -55,3 +55,36 @@ interface SessionDao {
     @Query("DELETE FROM sessions WHERE id IN (:sessionIds)")
     suspend fun deleteSessionsByIds(sessionIds: List<Int>)
 }
+
+@Dao
+interface DiagnosisDao {
+    @Query("SELECT * FROM diagnostics ORDER BY createdAt DESC")
+    fun getAllDiagnostics(): Flow<List<DiagnosisEntity>>
+
+    @Query("SELECT * FROM diagnostics WHERE id = :id LIMIT 1")
+    suspend fun getDiagnosisById(id: Int): DiagnosisEntity?
+
+    @Query("SELECT * FROM diagnostics WHERE id IN (:ids)")
+    suspend fun getDiagnosticsByIds(ids: List<Int>): List<DiagnosisEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDiagnosis(diagnosis: DiagnosisEntity): Long
+
+    @Query("SELECT COUNT(*) FROM diagnostics WHERE modelVersion != 'debug-fake'")
+    suspend fun getCount(): Int
+
+    @Query("SELECT COUNT(*) FROM diagnostics WHERE modelVersion != 'debug-fake'")
+    fun getTotalDiagnosticsCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM diagnostics WHERE modelVersion != 'debug-fake' AND createdAt >= :startOfDayMs AND createdAt < :endOfDayMs")
+    fun getTodayDiagnosticsCountFlow(startOfDayMs: Long, endOfDayMs: Long): Flow<Int>
+
+    @Query("SELECT * FROM diagnostics WHERE modelVersion = 'debug-fake'")
+    suspend fun getFakeDiagnostics(): List<DiagnosisEntity>
+
+    @Query("DELETE FROM diagnostics WHERE modelVersion = 'debug-fake'")
+    suspend fun deleteFakeDiagnostics(): Int
+
+    @Query("DELETE FROM diagnostics WHERE id IN (:ids)")
+    suspend fun deleteDiagnosticsByIds(ids: List<Int>)
+}

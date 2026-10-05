@@ -29,10 +29,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import com.example.appjardin.data.local.DiagnosisEntity
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.ui.screens.*
 import com.example.appjardin.ui.theme.*
+import com.example.appjardin.viewmodel.DiagnosisViewModel
 import com.example.appjardin.viewmodel.GardenViewModel
 
 class MainActivity : ComponentActivity() {
@@ -134,7 +139,70 @@ class MainActivity : ComponentActivity() {
                                     rootNavController.navigate("scan") {
                                         popUpTo("main_app") { inclusive = true }
                                     }
+                                },
+                                onNavigateToDiagnosisDetail = { id ->
+                                    rootNavController.navigate("diagnostico_detalle/$id")
+                                },
+                                onNavigateToDiagnosisScanner = {
+                                    rootNavController.navigate("diagnostico_scanner")
                                 }
+                            )
+                        }
+                        composable("diagnostico_scanner") { backStackEntry ->
+                            val diagnosisViewModel: DiagnosisViewModel = viewModel(backStackEntry)
+                            val plant = viewModel.selectedPlant.collectAsStateWithLifecycle().value
+                            diagnosisViewModel.currentPlantId = plant?.id
+                            diagnosisViewModel.currentPlantName = plant?.name ?: "Planta"
+                            
+                            val activeColor = viewModel.getMoistureState(
+                                viewModel.telemetry.collectAsStateWithLifecycle(null).value?.humedad ?: 0f, 
+                                plant
+                            ).let { state ->
+                                when (state) {
+                                    MoistureState.LOW_MOISTURE -> ColorLowMoisture
+                                    MoistureState.MEDIUM_MOISTURE -> ColorMediumMoisture
+                                    MoistureState.GOOD_MOISTURE -> ColorGoodMoisture
+                                    MoistureState.EXCESS_MOISTURE -> ColorExcessMoisture
+                                    else -> ColorVerdeAlegre
+                                }
+                            }
+                            
+                            DiagnosisScreen(
+                                viewModel = diagnosisViewModel,
+                                activeColor = activeColor,
+                                onBack = { rootNavController.popBackStack() },
+                                onNavigateToDetail = { id ->
+                                    rootNavController.navigate("diagnostico_detalle/$id") {
+                                        popUpTo("diagnostico_scanner") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+                        composable("diagnostico_detalle/{id}", arguments = listOf(navArgument("id") { type = NavType.IntType })) { backStackEntry ->
+                            val id = backStackEntry.arguments?.getInt("id") ?: 0
+                            var diagnosis by remember { mutableStateOf<DiagnosisEntity?>(null) }
+                            LaunchedEffect(id) {
+                                diagnosis = viewModel.getDiagnosisById(id)
+                            }
+                            
+                            val plant = viewModel.selectedPlant.collectAsStateWithLifecycle().value
+                            val activeColor = viewModel.getMoistureState(
+                                viewModel.telemetry.collectAsStateWithLifecycle(null).value?.humedad ?: 0f, 
+                                plant
+                            ).let { state ->
+                                when (state) {
+                                    MoistureState.LOW_MOISTURE -> ColorLowMoisture
+                                    MoistureState.MEDIUM_MOISTURE -> ColorMediumMoisture
+                                    MoistureState.GOOD_MOISTURE -> ColorGoodMoisture
+                                    MoistureState.EXCESS_MOISTURE -> ColorExcessMoisture
+                                    else -> ColorVerdeAlegre
+                                }
+                            }
+                            
+                            DiagnosisDetailScreen(
+                                diagnosis = diagnosis,
+                                activeColor = activeColor,
+                                onBack = { rootNavController.popBackStack() }
                             )
                         }
                     }
@@ -157,7 +225,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppContent(
     viewModel: GardenViewModel,
-    onNavigateToScan: () -> Unit
+    onNavigateToScan: () -> Unit,
+    onNavigateToDiagnosisDetail: (Int) -> Unit,
+    onNavigateToDiagnosisScanner: () -> Unit
 ) {
     val bottomNavController = rememberNavController()
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
@@ -335,7 +405,8 @@ fun MainAppContent(
                 composable("main") {
                     MainScreen(
                         viewModel = viewModel,
-                        onNavigateToSettings = { bottomNavController.navigate("settings") }
+                        onNavigateToSettings = { bottomNavController.navigate("settings") },
+                        onNavigateToDiagnosisScanner = onNavigateToDiagnosisScanner
                     )
                 }
                 composable("missions") { 
@@ -344,7 +415,12 @@ fun MainAppContent(
                         onNavigateToSettingsPets = { bottomNavController.navigate("settings") }
                     ) 
                 }
-                composable("history") { HistoryScreen(viewModel) }
+                composable("history") { 
+                    HistoryScreen(
+                        viewModel = viewModel,
+                        onNavigateToDiagnosisDetail = onNavigateToDiagnosisDetail
+                    ) 
+                }
                 composable("settings") { 
                     SettingsScreen(
                         viewModel = viewModel,

@@ -40,6 +40,9 @@ android {
         compose = true
         buildConfig = true
     }
+    androidResources {
+        noCompress += "tflite"
+    }
 }
 
 dependencies {
@@ -63,14 +66,18 @@ dependencies {
     implementation(libs.gson)
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
-    implementation("androidx.media3:media3-exoplayer:1.3.1")
-    implementation("androidx.media3:media3-ui:1.3.1")
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.litert)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

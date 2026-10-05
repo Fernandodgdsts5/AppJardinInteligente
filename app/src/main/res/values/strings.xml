@@ -38,6 +38,10 @@
     <string name="pet_mood_desc">%1$s, %2$s</string>
     <string name="delete_sessions_title">¿Eliminar %d registros?</string>
     <string name="delete_single_session_title">¿Eliminar sesión?</string>
+    <string name="delete_diagnostics_title">¿Eliminar %d diagnósticos?</string>
+    <string name="delete_single_diagnostic_title">¿Eliminar 1 diagnóstico?</string>
+    <string name="delete_all_diagnostics_title">¿Eliminar todos los diagnósticos?</string>
+    <string name="delete_diagnostics_text">Se eliminarán los diagnósticos e imágenes seleccionados.</string>
     <string name="active_session_warning">La sesión actual en curso no se puede eliminar y ha sido excluida.</string>
     <string name="select_all">Seleccionar todos</string>
     <string name="session_detail_title">Detalle de Sesión</string>
@@ -72,6 +76,25 @@
     <string name="reward_desc_pet">Desbloquea una nueva mascota para tu jardín.</string>
     <string name="c5_choose_pet_preview">Elegirás una mascota al abrir el cofre.</string>
     <string name="c5_choose_pet_prompt">Elige una mascota para desbloquear gratis:</string>
+
+    <string name="diagnosis_healthy_title">Planta saludable</string>
+    <string name="diagnosis_unhealthy_title">Posibles problemas detectados</string>
+    <string name="diagnosis_healthy_title_short">Saludable</string>
+    <string name="diagnosis_unhealthy_title_short">No saludable</string>
+    <string name="diagnosis_healthy_desc">La imagen presenta características compatibles con una planta saludable.</string>
+    <string name="diagnosis_unhealthy_desc">La planta presenta características asociadas con un estado no saludable.</string>
+    <string name="diagnosis_unhealthy_causes_title">Posibles causas:</string>
+    <string name="diagnosis_cause_1">• Mancha foliar</string>
+    <string name="diagnosis_cause_2">• Infección por hongos</string>
+    <string name="diagnosis_cause_3">• Daño o deterioro de la hoja</string>
+    <string name="diagnosis_healthy_confidence_format">Confianza: %1$d %%</string>
+    <string name="diagnosis_unhealthy_confidence_format">Confianza del análisis: %1$d %%</string>
+    <string name="diagnosis_unhealthy_note">Estas posibilidades son orientativas y requieren una evaluación adicional.</string>
+    <string name="diagnosis_recommendation_header">Recomendación</string>
+    <string name="diagnosis_healthy_recom">Continúa con sus cuidados habituales y vigila periódicamente cualquier cambio en sus hojas.</string>
+    <string name="diagnosis_unhealthy_recom">Revisa las hojas y el estado general de la planta. Busca manchas, cambios de color, marchitamiento o daños visibles. Si los síntomas persisten o aumentan, considera consultar una fuente especializada.</string>
+    <string name="diagnosis_disclaimer">Resultado orientativo generado por un modelo de IA; no sustituye a un especialista.</string>
+    <string name="export_pdf">Exportar PDF</string>
 
     <string-array name="plant_facts">
         <item>Las plantas se comunican mediante redes subterráneas de hongos.</item>

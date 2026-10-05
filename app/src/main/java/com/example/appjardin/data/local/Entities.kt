@@ -26,3 +26,15 @@ data class SessionEntity(
     val humedadMasBaja: Float = 0f,
     val humedadMasAlta: Float = 100f
 )
+
+@Entity(tableName = "diagnostics")
+data class DiagnosisEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val plantId: Int?,
+    val plantName: String,
+    val imagePath: String,
+    val result: String,
+    val confidence: Float,
+    val createdAt: Long,
+    val modelVersion: String
+)

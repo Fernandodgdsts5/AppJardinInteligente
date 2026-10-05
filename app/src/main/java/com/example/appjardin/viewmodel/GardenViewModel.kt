@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothProfile
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.appjardin.BuildConfig
 import com.example.appjardin.ble.BleManager
 import com.example.appjardin.data.Repository
 import com.example.appjardin.data.local.PlantEntity
@@ -44,6 +45,10 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         
     val allSessions = repository.allSessions
         .catch { Log.e("GardenViewModel", "Error fetching sessions", it); emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val allDiagnostics = repository.allDiagnostics
+        .catch { Log.e("GardenViewModel", "Error fetching diagnostics", it); emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val selectedPetId = repository.selectedPetIdFlow
@@ -94,8 +99,22 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         .catch { Log.e("GardenViewModel", "Error fetching unlocked pets", it); emit(setOf("larva", "gusano")) }
         .stateIn(viewModelScope, SharingStarted.Lazily, setOf("larva", "gusano"))
 
-    val diagnosticsCount: StateFlow<Int> = repository.diagnosticsCountFlow
+    val diagnosticsCount: StateFlow<Int> = repository.totalDiagnosticsCountFlow
         .catch { Log.e("GardenViewModel", "Error fetching diagnostics count", it); emit(0) }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    val todayDiagnosticsCount: StateFlow<Int> = repository.allDiagnostics.map { list ->
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val startMs = cal.timeInMillis
+        cal.add(Calendar.DAY_OF_MONTH, 1)
+        val endMs = cal.timeInMillis
+
+        list.count { it.modelVersion != "debug-fake" && it.createdAt >= startMs && it.createdAt < endMs }
+    }.catch { Log.e("GardenViewModel", "Error fetching today diagnostics count", it); emit(0) }
         .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     val manualWateringsCount: StateFlow<Int> = repository.manualWateringsCountFlow
@@ -136,6 +155,12 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     private val _isSessionSelectionMode = MutableStateFlow<Boolean>(false)
     val isSessionSelectionMode: StateFlow<Boolean> = _isSessionSelectionMode
 
+    private val _selectedDiagnosisIds = MutableStateFlow<Set<Int>>(emptySet())
+    val selectedDiagnosisIds: StateFlow<Set<Int>> = _selectedDiagnosisIds
+
+    private val _isDiagnosisSelectionMode = MutableStateFlow<Boolean>(false)
+    val isDiagnosisSelectionMode: StateFlow<Boolean> = _isDiagnosisSelectionMode
+
     val telemetry = bleManager.telemetry
     val connectionState = bleManager.connectionState
     val discoveredDevices = bleManager.discoveredDevices
@@ -163,6 +188,12 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             val corrected = repository.initializeGameOnStartup()
             Log.d("GardenViewModel", "Startup sanitization correction count: $corrected")
+            if (BuildConfig.DEBUG) {
+                val deleted = repository.cleanupFakeDiagnostics()
+                if (deleted > 0) {
+                    Log.d("GardenViewModel", "Deleted $deleted debug-fake diagnostics on startup")
+                }
+            }
         }
         
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
@@ -242,6 +273,8 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
 
+    suspend fun getDiagnosisById(id: Int) = repository.getDiagnosisById(id)
+    
     fun getMissionClaimedFlow(missionId: String, isDaily: Boolean): Flow<Boolean> {
         return repository.getMissionClaimedFlow(missionId, isDaily, getTodayStr())
     }
@@ -392,6 +425,39 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun clearSessionSelection() {
         _selectedSessionIds.value = emptySet()
         _isSessionSelectionMode.value = false
+    }
+
+    fun toggleDiagnosisSelection(diagnosisId: Int) {
+        val current = _selectedDiagnosisIds.value.toMutableSet()
+        if (current.contains(diagnosisId)) {
+            current.remove(diagnosisId)
+        } else {
+            current.add(diagnosisId)
+        }
+        _selectedDiagnosisIds.value = current
+        _isDiagnosisSelectionMode.value = current.isNotEmpty()
+    }
+
+    fun selectAllDiagnostics(allIds: List<Int>) {
+        _selectedDiagnosisIds.value = allIds.toSet()
+        _isDiagnosisSelectionMode.value = allIds.isNotEmpty()
+    }
+
+    fun clearDiagnosisSelection() {
+        _selectedDiagnosisIds.value = emptySet()
+        _isDiagnosisSelectionMode.value = false
+    }
+
+    fun deleteSelectedDiagnostics() {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            val idsToDelete = _selectedDiagnosisIds.value.toList()
+            if (idsToDelete.isNotEmpty()) {
+                repository.deleteDiagnostics(idsToDelete)
+            }
+            withContext(Dispatchers.Main) {
+                clearDiagnosisSelection()
+            }
+        }
     }
 
     fun deleteSelectedSessions(activeSessionId: Int?, onActiveExcluded: () -> Unit) {

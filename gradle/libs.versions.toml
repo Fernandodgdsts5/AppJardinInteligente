@@ -14,6 +14,8 @@ datastore = "1.1.2"
 navigation = "2.8.5"
 gson = "2.12.1"
 materialIconsExtended = "1.7.8"
+camerax = "1.4.1"
+litert = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +40,12 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert" }
+litert-support = { group = "com.google.ai.edge.litert", name = "litert-support", version.ref = "litert" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

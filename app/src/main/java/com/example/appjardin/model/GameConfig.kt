@@ -20,6 +20,8 @@ object GameConfig {
     const val OSCAR_COINS = 25000
     const val OSCAR_EXP = 15000
 
+    const val CONFIDENCE_THRESHOLD = 0.70f
+
     // Chest reward ranges
     val CHEST_C1_COINS = 50..200
     val CHEST_C2_COINS = 200..500
