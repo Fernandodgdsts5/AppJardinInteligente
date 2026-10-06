@@ -96,36 +96,93 @@
     <string name="diagnosis_disclaimer">Resultado orientativo generado por un modelo de IA; no sustituye a un especialista.</string>
     <string name="export_pdf">Exportar PDF</string>
 
-    <string-array name="plant_facts">
-        <item>Las plantas se comunican mediante redes subterráneas de hongos.</item>
-        <item>El bambú puede crecer hasta un metro en un solo día.</item>
-        <item>Las hojas absorben dióxido de carbono y liberan oxígeno.</item>
-        <item>Las plantas carnívoras pueden contar los toques de sus presas.</item>
-        <item>Algunas semillas germinan tras permanecer dormidas siglos.</item>
-        <item>Los girasoles jóvenes siguen al sol durante el día.</item>
-        <item>Las raíces de un árbol superan la anchura de su copa.</item>
-        <item>Las plantas producen químicos para ahuyentar plagas.</item>
-        <item>El árbol de la vainilla es una especie de orquídea.</item>
-        <item>Las flores siguen ritmos circadianos internos.</item>
-        <item>El café es la semilla tostada de un fruto tropical.</item>
-        <item>Las plantas de interior absorben toxinas del aire.</item>
-        <item>Los cactus almacenan agua en sus tejidos carnosos.</item>
-        <item>La piña tarda hasta dos años en madurar por completo.</item>
-        <item>Las hojas cambian de color en otoño al reciclar nutrientes.</item>
-        <item>Existen plantas parásitas que roban nutrientes a otras.</item>
-        <item>El árbol más alto del mundo supera los 115 metros.</item>
-        <item>Las plantas sienten vibraciones y liberan defensas.</item>
-        <item>La flor cadáver emite un fuerte olor a carne podrida.</item>
-        <item>El eucalipto es uno de los árboles de crecimiento más rápido.</item>
-        <item>Los nenúfares gigantes pueden soportar el peso de un niño.</item>
-        <item>El chocolate proviene de las semillas del cacao.</item>
-        <item>Las plantas bombean agua desde las raíces hasta las copas.</item>
-        <item>El trébol de cuatro hojas es una mutación genética rara.</item>
-        <item>Las plantas trepadoras usan zarcillos para aferrarse.</item>
-        <item>El polen es transportado por el viento y polinizadores.</item>
-        <item>Las piñas de los pinos se abren con clima seco y cálido.</item>
-        <item>Las plataneras son hierbas gigantes, no árboles.</item>
-        <item>Algunas flores emiten calor para atraer polinizadores.</item>
-        <item>Las plantas convierten luz solar en energía por fotosíntesis.</item>
+    <string name="welcome_prefix">"Bienvenido "</string>
+    <string name="default_user_name">Usuario</string>
+    <string name="connect_button_text">Conectar Jardín Inteligente</string>
+    <string name="welcome_bg_cd">Jardín Inteligente: mascotas junto a una maceta inteligente</string>
+
+    <string name="btn_skip">Saltar</string>
+    <string name="offline_mode_chip">Sin dispositivo</string>
+    <string name="offline_last_reading">Última lectura registrada</string>
+    <string name="offline_no_readings">Sin lecturas previas</string>
+    <string name="offline_humidity_tab_disabled">Requiere un Jardín Inteligente conectado</string>
+    <string name="offline_watering_disabled">Sin dispositivo conectado</string>
+
+    <string-array name="fun_facts_larva">
+        <item>Las larvas de mariposa consumen hojas específicas para acumular la energía necesaria durante su metamorfosis.</item>
+        <item>Muchas larvas se alimentan exclusivamente de una planta hospedera que las protege con sus sustancias químicas.</item>
+        <item>Al alimentarse de hojas viejas, algunas larvas ayudan a la planta a renovar su follaje de forma natural.</item>
+        <item>Las larvas de escarabajo descomponen hojas caídas en el suelo, enriqueciendo la tierra con materia orgánica.</item>
+        <item>Algunas plantas emiten aromas cuando son mordidas por larvas para atraer insectos depredadores protectores.</item>
+        <item>Las larvas de ciertas moscas ayudan a controlar plagas al alimentarse de diminutos pulgones en los tallos.</item>
+        <item>Muchas larvas construyen refugios doblando hojas con hilos de seda para protegerse del sol y la lluvia.</item>
+        <item>El excremento de las larvas es rico en nutrientes que vuelven al suelo y alimentan a las raíces.</item>
+        <item>Las larvas que sobreviven a su ciclo se convierten en adultos polinizadores esenciales para las flores.</item>
+        <item>Algunas larvas de polilla absorben toxinas de las hojas para volverse no comestibles para sus depredadores.</item>
+    </string-array>
+
+    <string-array name="fun_facts_gusano">
+        <item>Las lombrices excavan galerías subterráneas que airean las raíces y facilitan la absorción de oxígeno.</item>
+        <item>Al digerir materia orgánica, los gusanos producen humus rico en nitrógeno, fósforo y potasio para el suelo.</item>
+        <item>Los túneles de las lombrices aumentan la capacidad del suelo para retener agua y evitar la erosión.</item>
+        <item>Las lombrices consumen hojas secas y las transforman en nutrientes asimilables para las plantas.</item>
+        <item>El movimiento de los gusanos ayuda a mezclar las capas del suelo, distribuyendo minerales esenciales.</item>
+        <item>Un suelo con abundantes lombrices favorece un crecimiento radicular más profundo y saludable.</item>
+        <item>Los excrementos de lombriz reducen la compactación de la tierra en macetas y jardines.</item>
+        <item>Las lombrices regulan el pH del suelo al neutralizar sustancias ácidas con sus glándulas calcíferas.</item>
+        <item>La presencia de gusanos en la tierra estimula la actividad de bacterias benéficas para las plantas.</item>
+        <item>Las lombrices ayudan a transportar microorganismos útiles directamente hacia la zona de las raíces.</item>
+    </string-array>
+
+    <string-array name="fun_facts_hormiga">
+        <item>Muchas hormigas transportan semillas hacia sus hormigueros, favoreciendo la dispersión y germinación vegetal.</item>
+        <item>Algunas plantas producen néctar extrafloral en sus tallos para alimentar hormigas a cambio de protección.</item>
+        <item>Las hormigas defienden a las plantas atacando a orugas y chinches que intentan devorar sus brotes.</item>
+        <item>Al excavar nidos subterráneos, las hormigas remueven la tierra y mejoran el drenaje de agua en el jardín.</item>
+        <item>Ciertas especies de hormigas almacenan semillas bajo tierra donde germinan al llegar las lluvias.</item>
+        <item>La relación simbiótica entre hormigas y plantas con cavidades especiales se conoce como mirmecofilia.</item>
+        <item>Las hormigas recogen restos orgánicos e insectos muertos, aportando materia fertilizante al suelo.</item>
+        <item>Algunas hormigas limpian hongos nocivos de la superficie de las hojas para mantenerlas sanas.</item>
+        <item>El paso constante de hormigas por las ramas transporta granos de polen entre diferentes flores.</item>
+        <item>Muchas semillas poseen un apéndice carnoso rico en grasas llamado elaiosoma que atrae a las hormigas.</item>
+    </string-array>
+
+    <string-array name="fun_facts_chanchito">
+        <item>Los chanchitos de tierra son crustáceos terrestres que descomponen hojas muertas y madera en descomposición.</item>
+        <item>Al alimentarse de materia vegetal caduca, aceleran la formación de mantillo fértil para el suelo.</item>
+        <item>Los chanchitos de tierra cristalizan minerales pesados en su tubo digestivo, limpiando el suelo de toxinas.</item>
+        <item>Estas criaturas necesitan humedad constante para respirar a través de sus branquias modificadas.</item>
+        <item>Los chanchitos de tierra no dañan raíces sanas, pues prefieren tejidos vegetales caídos y húmedos.</item>
+        <item>Al digerir materia orgánica, liberan calcio y magnesio en el sustrato del jardín.</item>
+        <item>Los chanchitos de tierra ayudan a controlar el crecimiento excesivo de hongos descomponedores en la tierra.</item>
+        <item>Su actividad nocturna fragmenta los restos de hojas, facilitando el trabajo de bacterias fertilizantes.</item>
+        <item>Cuando sienten peligro, muchos chanchitos se enrollan en una esfera perfecta para proteger su cuerpo.</item>
+        <item>La presencia de chanchitos de tierra indica un suelo húmedo, rico en materia orgánica y vida biológica.</item>
+    </string-array>
+
+    <string-array name="fun_facts_abeja">
+        <item>Las abejas son los polinizadores más importantes, permitiendo la reproducción de miles de plantas con flores.</item>
+        <item>Al buscar néctar, las abejas transportan polen adherido a los vellos de su cuerpo hacia otras flores.</item>
+        <item>Las abejas perciben la luz ultravioleta, lo que les permite ver patrones ocultos en los pétalos.</item>
+        <item>Muchas flores abren sus pétalos y liberan aromas en las horas de mayor actividad de las abejas.</item>
+        <item>La polinización por abejas aumenta la calidad, cantidad y tamaño de los frutos en huertos y jardines.</item>
+        <item>Las abejas comunican la ubicación de flores con néctar mediante una danza precisa dentro de la colmena.</item>
+        <item>Algunas plantas producen flores de colores brillantes como azul y amarillo para atraer abejas a distancia.</item>
+        <item>Al recolectar polen, las abejas favorecen la diversidad genética y resistencia de las poblaciones vegetales.</item>
+        <item>Las abejas solitarias construyen pequeños nidos en tallos secos o en el suelo cerca de las plantas.</item>
+        <item>Sin la polinización de las abejas, más de un tercio de los cultivos alimentarios del mundo desaparecerían.</item>
+    </string-array>
+
+    <string-array name="fun_facts_reygeko">
+        <item>Los gecos de jardín se alimentan de grillos, polillas y cucarachas que devoran el follaje de las plantas.</item>
+        <item>Al cazar plagas nocturnas, los gecos actúan como un control biológico natural en jardines y huertos.</item>
+        <item>Ciertas especies de gecos tropicales se alimentan de néctar y polinizan flores de floración nocturna.</item>
+        <item>Algunos gecos consumen frutos maduros caídos y dispersan sus semillas en nuevas áreas del suelo.</item>
+        <item>Las almohadillas adhesivas de las patas del geco le permiten trepar por tallos lisos y hojas grandes.</item>
+        <item>Los gecos habitan entre la corteza de los árboles y arbustos gruesos donde encuentran refugio y sombra.</item>
+        <item>La presencia de gecos en el jardín indica un ecosistema equilibrado y libre de pesticidas químicos.</item>
+        <item>Los gecos cazan sigilosamente entre las hojas sin causar ningún daño físico al follaje de las plantas.</item>
+        <item>La piel del geco repele el agua, lo que le permite mantenerse seco durante lluvias intensas en la vegetación.</item>
+        <item>Muchas plantas trepadoras ofrecen cobijo ideal para que los gecos descansen durante las horas de sol.</item>
     </string-array>
 </resources>

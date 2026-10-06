@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.*
@@ -30,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +44,7 @@ import com.example.appjardin.model.Pet
 import com.example.appjardin.model.PetMood
 import com.example.appjardin.model.toPetMood
 import com.example.appjardin.ui.theme.*
+import com.example.appjardin.viewmodel.ConnectionMode
 import com.example.appjardin.viewmodel.GardenViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -87,7 +90,10 @@ fun HistoryScreen(viewModel: GardenViewModel, onNavigateToDiagnosisDetail: (Int)
         }
     }
 
-    var selectedTab by rememberSaveable { mutableStateOf(0) } // 0 = Humedad, 1 = Diagnóstico
+    val connectionMode by viewModel.connectionMode.collectAsStateWithLifecycle()
+    val isOffline = connectionMode == ConnectionMode.OFFLINE
+
+    var selectedTab by rememberSaveable { mutableStateOf(if (isOffline) 1 else 0) } // 0 = Humedad, 1 = Diagnóstico
     var sessionIdDetail by rememberSaveable { mutableStateOf<Int?>(null) }
     var showMultiDeleteDialog by remember { mutableStateOf(false) }
 
@@ -177,7 +183,7 @@ fun HistoryScreen(viewModel: GardenViewModel, onNavigateToDiagnosisDetail: (Int)
                 )
             }
         },
-        containerColor = CreamBackground
+        containerColor = Color.Transparent
     ) { padding ->
         Column(
             modifier = Modifier
@@ -194,19 +200,24 @@ fun HistoryScreen(viewModel: GardenViewModel, onNavigateToDiagnosisDetail: (Int)
                 val tabs = listOf(stringResource(R.string.tab_humidity), stringResource(R.string.tab_diagnosis))
                 tabs.forEachIndexed { index, title ->
                     val isSelected = selectedTab == index
+                    val isTabDisabled = isOffline && index == 0
                     Button(
                         onClick = {
-                            selectedTab = index
-                            viewModel.clearSessionSelection()
-                            viewModel.clearDiagnosisSelection()
+                            if (isTabDisabled) {
+                                Toast.makeText(context, context.getString(R.string.offline_humidity_tab_disabled), Toast.LENGTH_SHORT).show()
+                            } else {
+                                selectedTab = index
+                                viewModel.clearSessionSelection()
+                                viewModel.clearDiagnosisSelection()
+                            }
                         },
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) activeColor else Color.White,
-                            contentColor = if (isSelected) Color.White else DarkText
+                            containerColor = if (isSelected) (if (isTabDisabled) Color.Gray else activeColor) else Color.White,
+                            contentColor = if (isSelected) Color.White else (if (isTabDisabled) Color.LightGray else DarkText)
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = if (isSelected) 2.dp else 0.dp)
                     ) {
@@ -221,7 +232,34 @@ fun HistoryScreen(viewModel: GardenViewModel, onNavigateToDiagnosisDetail: (Int)
 
             if (selectedTab == 0) {
                 // Humedad Tab
-                if (sessions.isEmpty()) {
+                if (isOffline) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BluetoothDisabled,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = Color.Gray
+                            )
+                            Text(
+                                text = stringResource(R.string.offline_humidity_tab_disabled),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else if (sessions.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

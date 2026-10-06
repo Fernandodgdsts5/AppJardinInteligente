@@ -10,6 +10,7 @@ import com.example.appjardin.BuildConfig
 import com.example.appjardin.ble.BleManager
 import com.example.appjardin.data.Repository
 import com.example.appjardin.data.local.PlantEntity
+import com.example.appjardin.data.local.SessionEntity
 import com.example.appjardin.model.Config
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.Pet
@@ -25,6 +26,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
+
+enum class ConnectionMode {
+    CONNECTED,
+    OFFLINE
+}
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class GardenViewModel(application: Application) : AndroidViewModel(application) {
@@ -166,6 +172,28 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     val discoveredDevices = bleManager.discoveredDevices
     val isScanning = bleManager.isScanning
 
+    private val _connectionMode = MutableStateFlow(ConnectionMode.CONNECTED)
+    val connectionMode: StateFlow<ConnectionMode> = _connectionMode
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val lastSessionForSelectedPlant: StateFlow<SessionEntity?> = _selectedPlant
+        .flatMapLatest { plant ->
+            if (plant != null) repository.getLastSessionForPlant(plant.id) else flowOf(null)
+        }
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    fun skipToOfflineMode() {
+        bleManager.stopScan()
+        bleManager.disconnect()
+        _connectionMode.value = ConnectionMode.OFFLINE
+        isRecordingSession = false
+        waitingForFirstTelemetry = false
+    }
+
+    fun setConnectionMode(mode: ConnectionMode) {
+        _connectionMode.value = mode
+    }
+
     val activeSessionId: StateFlow<Int?> = combine(connectionState, allSessions) { state, sessions ->
         if (state == BluetoothProfile.STATE_CONNECTED && isRecordingSession) {
             sessions.firstOrNull()?.id
@@ -238,6 +266,9 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
         
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             telemetry.filterNotNull().collect { tele ->
+                if (_connectionMode.value == ConnectionMode.OFFLINE) {
+                    return@collect
+                }
                 val prevOptimistic = _pumpOn.value
                 _pumpOn.value = tele.bomba
                 lastKnownHumidity = tele.humedad
@@ -494,6 +525,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startScan() {
+        _connectionMode.value = ConnectionMode.CONNECTED
         bleManager.startScan()
     }
 
@@ -502,6 +534,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun connectToDevice(device: BluetoothDevice) {
+        _connectionMode.value = ConnectionMode.CONNECTED
         bleManager.connectToDevice(device)
     }
     
@@ -510,6 +543,7 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     }
     
     fun togglePump(turnOn: Boolean) {
+        if (_connectionMode.value == ConnectionMode.OFFLINE) return
         val isConnected = connectionState.value == BluetoothProfile.STATE_CONNECTED
         val plant = selectedPlant.value
         val isExcess = plant != null && lastKnownHumidity > plant.humedadExceso

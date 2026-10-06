@@ -1,6 +1,7 @@
 package com.example.appjardin.ui.screens
 
 import android.Manifest
+import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -43,7 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.appjardin.viewmodel.ConnectionMode
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.res.painterResource
@@ -63,6 +67,7 @@ import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.Telemetry
 import com.example.appjardin.ui.theme.*
 import com.example.appjardin.util.PlantImageStorage
+import com.example.appjardin.util.parseFinalHumidity
 import com.example.appjardin.viewmodel.GardenViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +81,11 @@ private val PET_CARD_HEIGHT = 180.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit = {}) {
+fun SettingsScreen(
+    viewModel: GardenViewModel,
+    onNavigateToMissions: () -> Unit = {},
+    onNavigateToScan: () -> Unit = {}
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -84,6 +93,38 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
     val plants by viewModel.allPlants.collectAsStateWithLifecycle()
     val selectedPlant by viewModel.selectedPlant.collectAsStateWithLifecycle()
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
+
+    val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
+    val connectionMode by viewModel.connectionMode.collectAsStateWithLifecycle()
+    val lastSession by viewModel.lastSessionForSelectedPlant.collectAsStateWithLifecycle()
+
+    val isOffline = connectionMode == ConnectionMode.OFFLINE
+    val isConnected = !isOffline && connectionState == BluetoothProfile.STATE_CONNECTED
+    val isDisconnecting = connectionState == BluetoothProfile.STATE_DISCONNECTING
+
+    val liveHumidity = telemetry?.humedad ?: 0f
+    val offlineFinalHumidity = remember(lastSession) { parseFinalHumidity(lastSession?.humidities) }
+
+    val effectiveHumidity = if (isConnected) liveHumidity else (offlineFinalHumidity ?: 0f)
+    val buttonMoistureState = if (!isConnected && offlineFinalHumidity == null) {
+        MoistureState.NO_PLANT
+    } else {
+        viewModel.getMoistureState(effectiveHumidity, selectedPlant)
+    }
+
+    val buttonTargetColor = if (selectedPlant == null || (!isConnected && offlineFinalHumidity == null)) {
+        ColorVerdeAlegre
+    } else {
+        when (buttonMoistureState) {
+            MoistureState.NO_PLANT -> ColorVerdeAlegre
+            MoistureState.LOW_MOISTURE -> ColorLowMoisture
+            MoistureState.MEDIUM_MOISTURE -> ColorMediumMoisture
+            MoistureState.GOOD_MOISTURE -> ColorGoodMoisture
+            MoistureState.EXCESS_MOISTURE -> ColorExcessMoisture
+        }
+    }
+
+    val buttonColor by animateColorAsState(targetValue = buttonTargetColor, label = "ConnectionButtonColor")
 
     val humidity = telemetry?.humedad ?: 0f
     val state = viewModel.getMoistureState(humidity, selectedPlant)
@@ -127,7 +168,7 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = activeColor)
             )
         },
-        containerColor = CreamBackground
+        containerColor = Color.Transparent
     ) { padding ->
         Column(
             modifier = Modifier
@@ -209,6 +250,66 @@ fun SettingsScreen(viewModel: GardenViewModel, onNavigateToMissions: () -> Unit 
                                 ) {
                                     Text("Guardar")
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // BLE CONNECTION CARD SECTION
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            if (isConnected) {
+                                viewModel.disconnectBle()
+                            } else {
+                                onNavigateToScan()
+                            }
+                        },
+                        enabled = !isDisconnecting,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = buttonColor,
+                            contentColor = Color.White,
+                            disabledContainerColor = Color.LightGray,
+                            disabledContentColor = Color.DarkGray
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = if (isConnected) "Desconectar Jardín Inteligente" else "Conectar Jardín Inteligente",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (!isConnected) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = Color.White
+                                )
                             }
                         }
                     }

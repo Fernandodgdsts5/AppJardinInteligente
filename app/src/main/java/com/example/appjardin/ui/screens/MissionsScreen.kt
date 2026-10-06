@@ -177,7 +177,7 @@ fun MissionsScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = activeColor)
             )
         },
-        containerColor = CreamBackground
+        containerColor = Color.Transparent
     ) { padding ->
         Column(
             modifier = Modifier

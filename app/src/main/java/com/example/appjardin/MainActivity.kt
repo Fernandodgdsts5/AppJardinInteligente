@@ -1,7 +1,9 @@
 package com.example.appjardin
 
 import android.Manifest
+import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.view.Window
 import android.bluetooth.BluetoothProfile
 import android.content.Intent
 import android.os.Build
@@ -13,11 +15,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -25,14 +25,22 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.appjardin.data.local.DiagnosisEntity
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.ui.screens.*
@@ -125,6 +133,12 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("welcome") { inclusive = true }
                                     }
                                 },
+                                onSkipOffline = {
+                                    viewModel.skipToOfflineMode()
+                                    rootNavController.navigate("main_app") {
+                                        popUpTo("welcome") { inclusive = true }
+                                    }
+                                },
                                 onRequestEnableBluetooth = {
                                     val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                                     enableBtLauncher.launch(enableBtIntent)
@@ -136,9 +150,7 @@ class MainActivity : ComponentActivity() {
                             MainAppContent(
                                 viewModel = viewModel,
                                 onNavigateToScan = {
-                                    rootNavController.navigate("scan") {
-                                        popUpTo("main_app") { inclusive = true }
-                                    }
+                                    rootNavController.navigate("scan")
                                 },
                                 onNavigateToDiagnosisDetail = { id ->
                                     rootNavController.navigate("diagnostico_detalle/$id")
@@ -229,6 +241,26 @@ fun MainAppContent(
     onNavigateToDiagnosisDetail: (Int) -> Unit,
     onNavigateToDiagnosisScanner: () -> Unit
 ) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        DisposableEffect(view) {
+            val activity = view.context as? Activity
+            val window = activity?.window
+            val insetsController = if (window != null) WindowCompat.getInsetsController(window, view) else null
+
+            val previousLightStatus = insetsController?.isAppearanceLightStatusBars ?: true
+            val previousLightNav = insetsController?.isAppearanceLightNavigationBars ?: true
+
+            insetsController?.isAppearanceLightStatusBars = true
+            insetsController?.isAppearanceLightNavigationBars = true
+
+            onDispose {
+                insetsController?.isAppearanceLightStatusBars = previousLightStatus
+                insetsController?.isAppearanceLightNavigationBars = previousLightNav
+            }
+        }
+    }
+
     val bottomNavController = rememberNavController()
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
     val plant by viewModel.selectedPlant.collectAsStateWithLifecycle()
@@ -312,8 +344,8 @@ fun MainAppContent(
                     },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color.White,
-                        selectedTextColor = activeColor,
-                        indicatorColor = activeColor,
+                        selectedTextColor = ColorVerdeAlegre,
+                        indicatorColor = ColorVerdeAlegre,
                         unselectedIconColor = Color.Gray,
                         unselectedTextColor = Color.Gray
                     )
@@ -430,7 +462,8 @@ fun MainAppContent(
                                 restoreState = true
                                 popUpTo("main")
                             }
-                        }
+                        },
+                        onNavigateToScan = onNavigateToScan
                     ) 
                 }
             }

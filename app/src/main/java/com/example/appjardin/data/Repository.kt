@@ -30,6 +30,10 @@ class Repository(private val context: Context) {
     val allPlants: Flow<List<PlantEntity>> = plantDao.getAllPlants()
     val allSessions: Flow<List<SessionEntity>> = sessionDao.getAllSessions()
     val allDiagnostics: Flow<List<DiagnosisEntity>> = diagnosisDao.getAllDiagnostics()
+
+    fun getLastSessionForPlant(plantId: Int): Flow<SessionEntity?> {
+        return sessionDao.getLastSessionForPlant(plantId)
+    }
     val totalDiagnosticsCountFlow: Flow<Int> = diagnosisDao.getTotalDiagnosticsCountFlow()
 
     fun getTodayDiagnosticsCountFlow(startOfDayMs: Long, endOfDayMs: Long): Flow<Int> {
