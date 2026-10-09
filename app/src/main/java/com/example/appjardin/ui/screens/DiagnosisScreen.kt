@@ -14,11 +14,15 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,14 +31,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.appjardin.R
 import com.example.appjardin.viewmodel.DiagnosisUiState
 import com.example.appjardin.viewmodel.DiagnosisViewModel
 import java.io.File
@@ -51,6 +60,8 @@ fun DiagnosisScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    var isTorchEnabled by rememberSaveable { mutableStateOf(false) }
+
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -65,6 +76,18 @@ fun DiagnosisScreen(
         }
     }
 
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
+                isTorchEnabled = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -75,6 +98,7 @@ fun DiagnosisScreen(
         val state = uiState
         if (state is DiagnosisUiState.Saved) {
             val savedId = state.id
+            isTorchEnabled = false
             viewModel.resetToCamera()
             onNavigateToDetail(savedId)
         } else if (state is DiagnosisUiState.Error) {
@@ -88,7 +112,10 @@ fun DiagnosisScreen(
             TopAppBar(
                 title = { Text("Diagnosticar Planta", color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        isTorchEnabled = false
+                        onBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
                     }
                 },
@@ -115,6 +142,8 @@ fun DiagnosisScreen(
                 is DiagnosisUiState.Camera -> {
                     CameraPreviewView(
                         activeColor = activeColor,
+                        isTorchEnabled = isTorchEnabled,
+                        onToggleTorch = { enabled -> isTorchEnabled = enabled },
                         onPhotoTaken = { file -> viewModel.onPhotoCaptured(file) }
                     )
                 }
@@ -217,12 +246,52 @@ fun DiagnosisScreen(
 @Composable
 fun CameraPreviewView(
     activeColor: Color,
+    isTorchEnabled: Boolean,
+    onToggleTorch: (Boolean) -> Unit,
     onPhotoTaken: (File) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+
+    var cameraInstance by remember { mutableStateOf<Camera?>(null) }
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
+
+    val cameraInfo = cameraInstance?.cameraInfo
+    val torchLiveData = remember(cameraInfo) { cameraInfo?.torchState }
+    var isTorchOnByLiveData by remember { mutableStateOf(false) }
+
+    DisposableEffect(torchLiveData) {
+        val observer = Observer<Int> { state ->
+            isTorchOnByLiveData = (state == TorchState.ON)
+        }
+        torchLiveData?.observeForever(observer)
+        onDispose {
+            torchLiveData?.removeObserver(observer)
+        }
+    }
+
+    val hasFlashUnit = remember(cameraInfo) { cameraInfo?.hasFlashUnit() == true }
+
+    LaunchedEffect(cameraInstance, isTorchEnabled, hasFlashUnit) {
+        val cam = cameraInstance
+        if (cam != null && hasFlashUnit) {
+            val future = cam.cameraControl.enableTorch(isTorchEnabled)
+            future.addListener({
+                try {
+                    future.get()
+                } catch (e: Exception) {
+                    onToggleTorch(false)
+                }
+            }, ContextCompat.getMainExecutor(context))
+        }
+    }
+
+    DisposableEffect(cameraInstance) {
+        onDispose {
+            cameraInstance?.cameraControl?.enableTorch(false)
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "FrameAnim")
     val frameAlpha by infiniteTransition.animateFloat(
@@ -250,7 +319,8 @@ fun CameraPreviewView(
 
                     try {
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture)
+                        val boundCamera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageCapture)
+                        cameraInstance = boundCamera
                     } catch (e: Exception) {
                         Toast.makeText(ctx, "Error de cámara", Toast.LENGTH_SHORT).show()
                     }
@@ -267,6 +337,34 @@ fun CameraPreviewView(
                 .align(Alignment.Center)
                 .border(2.dp, activeColor.copy(alpha = frameAlpha), RoundedCornerShape(24.dp))
         )
+
+        // Torch Toggle Button overlay (Top-End)
+        if (hasFlashUnit) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = CircleShape,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 16.dp, end = 16.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        val nextState = !isTorchOnByLiveData
+                        onToggleTorch(nextState)
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isTorchOnByLiveData) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        contentDescription = stringResource(
+                            if (isTorchOnByLiveData) R.string.cd_torch_turn_off else R.string.cd_torch_turn_on
+                        ),
+                        tint = if (isTorchOnByLiveData) activeColor else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
 
         Button(
             onClick = {

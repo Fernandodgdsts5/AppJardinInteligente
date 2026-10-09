@@ -49,12 +49,17 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.appjardin.R
 import com.example.appjardin.data.local.PlantEntity
+import com.example.appjardin.model.AppTheme
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.Pet
+import com.example.appjardin.model.PetMood
 import com.example.appjardin.model.toPetMood
 import com.example.appjardin.ui.components.CircularGauge
+import com.example.appjardin.ui.components.PetFrameAnimation
 import com.example.appjardin.ui.theme.*
+import com.example.appjardin.util.PetAssetUtils
 import com.example.appjardin.util.PetFactUtils
+import com.example.appjardin.util.PetVisualTarget
 import com.example.appjardin.util.PlantImageStorage
 import com.example.appjardin.util.parseFinalHumidity
 import com.example.appjardin.viewmodel.ConnectionMode
@@ -64,11 +69,12 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+private const val DATO_CURIOSO_DURACION_MS = 10_000L
 private const val FixedHeaderAlpha = 0.52f
 private val StatusNeutralGreen = ColorVerdeAlegre
 
 @Composable
-private fun MainScreenBackground() {
+private fun MainScreenBackground(theme: AppTheme = AppTheme.SELVA) {
     val context = LocalContext.current
     val view = LocalView.current
 
@@ -88,9 +94,10 @@ private fun MainScreenBackground() {
         }
     }
 
-    val imageRequest = remember(context) {
+    val assetPath = theme.assetPath ?: "img/fe2.png"
+    val imageRequest = remember(context, assetPath) {
         ImageRequest.Builder(context)
-            .data("file:///android_asset/img/fe2.png")
+            .data("file:///android_asset/$assetPath")
             .crossfade(false)
             .build()
     }
@@ -98,35 +105,33 @@ private fun MainScreenBackground() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF233B2B), Color(0xFFF6F3DC))
-                )
-            )
+            .background(CreamBackground)
     ) {
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alignment = Alignment.Center
-        )
+        if (theme.assetPath != null) {
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
 
-        val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(statusBarPadding + 28.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF1B3123).copy(alpha = 0.40f),
-                            Color(0xFF1B3123).copy(alpha = 0.15f),
-                            Color.Transparent
+            val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(statusBarPadding + 28.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF1B3123).copy(alpha = 0.40f),
+                                Color(0xFF1B3123).copy(alpha = 0.15f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
     }
 }
 
@@ -239,6 +244,7 @@ fun MainScreen(
 
     val isExcess = !isOffline && (telemetry?.exceso == true || (currentPlant != null && realHumidity > currentPlant.humedadExceso))
     val pumpOn by viewModel.pumpOn.collectAsStateWithLifecycle()
+    val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
 
     val defaultRes = PlantImageStorage.getDefaultDrawableRes(currentPlant?.defaultKey)
     val plantImageModel = when {
@@ -263,7 +269,7 @@ fun MainScreen(
 
     LaunchedEffect(factTapCount) {
         if (factTapCount > 0) {
-            delay(5000)
+            delay(DATO_CURIOSO_DURACION_MS)
             showFact = false
         }
     }
@@ -289,11 +295,13 @@ fun MainScreen(
         stateText = stateText,
         subLabelText = subLabelText,
         effectiveHumidity = effectiveHumidity,
+        moistureState = state,
         isOffline = isOffline,
         offlineFinalHumidity = offlineFinalHumidity,
         currentPlant = currentPlant,
         plantImageModel = plantImageModel,
         selectedPet = selectedPet,
+        selectedTheme = selectedTheme,
         showFact = showFact,
         shuffledFacts = shuffledFacts,
         factIndex = factIndex,
@@ -314,11 +322,13 @@ fun MainScreenContent(
     stateText: String,
     subLabelText: String,
     effectiveHumidity: Float,
+    moistureState: MoistureState,
     isOffline: Boolean,
     offlineFinalHumidity: Float?,
     currentPlant: PlantEntity?,
     plantImageModel: Any,
     selectedPet: Pet,
+    selectedTheme: AppTheme = AppTheme.SELVA,
     showFact: Boolean,
     shuffledFacts: List<String>,
     factIndex: Int,
@@ -330,9 +340,13 @@ fun MainScreenContent(
     onNavigateToScan: () -> Unit,
     onTogglePump: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
+    val headerContainerColor = selectedTheme.getHeaderColor(activeColor)
+    val themeButtonColor = selectedTheme.getButtonColor(activeColor)
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Stable background component with fe2.png artwork ONLY for MainScreen
-        MainScreenBackground()
+        // 1. Stable background component for MainScreen according to selected theme
+        MainScreenBackground(theme = selectedTheme)
 
         Scaffold(
             topBar = {
@@ -385,7 +399,7 @@ fun MainScreenContent(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = StatusNeutralGreen.copy(alpha = FixedHeaderAlpha)
+                        containerColor = headerContainerColor
                     )
                 )
             },
@@ -491,14 +505,7 @@ fun MainScreenContent(
                         val petMood = when {
                             currentPlant == null -> MoistureState.NO_PLANT.toPetMood()
                             isOffline && offlineFinalHumidity == null -> MoistureState.NO_PLANT.toPetMood()
-                            else -> {
-                                val currentMoistureState = if (isOffline) {
-                                    MoistureState.GOOD_MOISTURE
-                                } else {
-                                    MoistureState.GOOD_MOISTURE
-                                }
-                                currentMoistureState.toPetMood()
-                            }
+                            else -> moistureState.toPetMood()
                         }
                         Row(
                             modifier = Modifier
@@ -507,15 +514,40 @@ fun MainScreenContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Image(
-                                painter = painterResource(id = selectedPet.getDrawable(selectedPet.getDrawable(petMood).let { petMood })),
-                                contentDescription = selectedPet.speciesName,
-                                modifier = Modifier
-                                    .height(240.dp)
-                                    .fillMaxWidth(0.55f)
-                                    .aspectRatio(1f),
-                                contentScale = ContentScale.Fit
-                            )
+                            val target = remember(selectedPet.id, petMood) {
+                                PetAssetUtils.resolvePetVisualTarget(selectedPet.id, petMood)
+                            }
+
+                            when (target) {
+                                is PetVisualTarget.FrameAnimation -> {
+                                    PetFrameAnimation(
+                                        folderName = target.folderName,
+                                        contentDescription = selectedPet.speciesName,
+                                        modifier = Modifier
+                                            .height(240.dp)
+                                            .fillMaxWidth(0.55f)
+                                            .aspectRatio(1f)
+                                    )
+                                }
+                                is PetVisualTarget.StaticAsset -> {
+                                    val imageRequest = remember(context, target.assetPath) {
+                                        ImageRequest.Builder(context)
+                                            .data("file:///android_asset/${target.assetPath}")
+                                            .crossfade(false)
+                                            .build()
+                                    }
+                                    AsyncImage(
+                                        model = imageRequest,
+                                        contentDescription = selectedPet.speciesName,
+                                        modifier = Modifier
+                                            .height(240.dp)
+                                            .fillMaxWidth(0.55f)
+                                            .aspectRatio(1f),
+                                        contentScale = ContentScale.Fit,
+                                        alignment = Alignment.Center
+                                    )
+                                }
+                            }
 
                             // Right side Column with reserved slot for fact card + button
                             Column(
@@ -541,7 +573,7 @@ fun MainScreenContent(
                                             colors = CardDefaults.cardColors(containerColor = Color.White),
                                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                                             shape = RoundedCornerShape(10.dp),
-                                            border = BorderStroke(1.5.dp, StatusNeutralGreen),
+                                            border = BorderStroke(1.5.dp, themeButtonColor),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .wrapContentHeight()
@@ -566,7 +598,7 @@ fun MainScreenContent(
                                         .fillMaxWidth()
                                         .height(38.dp),
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = StatusNeutralGreen),
+                                    colors = ButtonDefaults.buttonColors(containerColor = themeButtonColor),
                                     shape = RoundedCornerShape(19.dp)
                                 ) {
                                     Text(
@@ -625,7 +657,7 @@ fun MainScreenContent(
                                 .fillMaxWidth()
                                 .height(56.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = StatusNeutralGreen,
+                                containerColor = themeButtonColor,
                                 disabledContainerColor = Color.LightGray,
                                 disabledContentColor = Color.DarkGray
                             ),
@@ -655,9 +687,9 @@ fun MainScreenContent(
                             shape = RoundedCornerShape(28.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = CreamBackground,
-                                contentColor = StatusNeutralGreen
+                                contentColor = themeButtonColor
                             ),
-                            border = BorderStroke(1.dp, StatusNeutralGreen)
+                            border = BorderStroke(1.dp, themeButtonColor)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -667,7 +699,7 @@ fun MainScreenContent(
                                 Icon(
                                     imageVector = Icons.Default.PhotoCamera,
                                     contentDescription = null,
-                                    tint = StatusNeutralGreen,
+                                    tint = themeButtonColor,
                                     modifier = Modifier.size(22.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -675,7 +707,7 @@ fun MainScreenContent(
                                     text = stringResource(R.string.diagnose_plant),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = StatusNeutralGreen
+                                    color = themeButtonColor
                                 )
                             }
                         }
@@ -695,6 +727,7 @@ fun MainScreenPreviewGood() {
             stateText = "Humedad adecuada",
             subLabelText = "Humedad del suelo",
             effectiveHumidity = 65f,
+            moistureState = MoistureState.GOOD_MOISTURE,
             isOffline = false,
             offlineFinalHumidity = null,
             currentPlant = PlantEntity(1, "Tomate", 30, 60, 80),
@@ -723,6 +756,7 @@ fun MainScreenPreviewLow() {
             stateText = "Poca humedad",
             subLabelText = "Humedad del suelo",
             effectiveHumidity = 18f,
+            moistureState = MoistureState.LOW_MOISTURE,
             isOffline = false,
             offlineFinalHumidity = null,
             currentPlant = PlantEntity(1, "Tomate", 30, 60, 80),

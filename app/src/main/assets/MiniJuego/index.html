@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover"
+    >
+
+    <meta name="theme-color" content="#174d3b">
+
+    <meta
+        name="description"
+        content="Aprende a cuidar tus plantas tomando decisiones inteligentes de riego."
+    >
+
+    <title>¿Regar o esperar? | Jardín Inteligente</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/host-overrides.css">
+
+    <!--
+        IMPORTANTE:
+        Este bloque convierte el juego en un escenario 16:9 escalable.
+
+        La composición original está diseñada para:
+        1366 × 768
+
+        En pantallas menores NO se reorganiza la interfaz.
+        Se escala completa y proporcionalmente.
+    -->
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /*
+         * CONTENEDOR DEL VIEWPORT
+         *
+         * Ocupa exactamente el espacio disponible.
+         * El juego completo se centrará dentro.
+         */
+        .game-stage {
+            position: relative;
+
+            width: 100vw;
+            height: 100dvh;
+
+            min-width: 0;
+            min-height: 0;
+
+            margin: 0;
+            padding: 0;
+
+            overflow: hidden;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            /*
+             * El valor se calcula mediante JavaScript.
+             */
+            --game-scale: 1;
+        }
+
+        .scene-wrapper {
+            position: relative;
+            width: 1366px;
+            height: 768px;
+            transform: scale(var(--game-scale));
+            transform-origin: center center;
+        }
+
+        /*
+         * ESCENARIO REAL DEL JUEGO
+         *
+         * Esta es la resolución de diseño.
+         *
+         * Todo el contenido interno conserva estas proporciones.
+         */
+        .app-shell {
+            position: relative;
+
+            width: 1366px;
+            height: 768px;
+
+            max-width: none;
+            max-height: none;
+
+            margin: 0;
+            padding: 0;
+
+            flex: none;
+
+            transform-origin: center center;
+
+            /*
+             * Evita que alguna regla responsive del CSS
+             * cambie el ancho del escenario.
+             */
+            box-sizing: border-box;
+        }
+
+        /*
+         * IMPORTANTE:
+         *
+         * Los elementos internos deben trabajar respecto
+         * al escenario de 1366 × 768.
+         *
+         * No queremos que las media queries del CSS original
+         * conviertan el juego en una columna en pantallas pequeñas.
+         */
+        .app-shell .garden {
+            width: 100%;
+            height: 100%;
+        }
+
+        /*
+         * El fondo y la composición deben permanecer dentro
+         * del escenario.
+         */
+        .app-shell .garden {
+            overflow: hidden;
+        }
+
+        /*
+         * Evita que imágenes o elementos sobresalgan del
+         * escenario por pequeños errores de cálculo.
+         */
+        .app-shell img {
+            max-width: none;
+        }
+
+        /*
+         * Los overlays pertenecen al mismo escenario y por tanto
+         * también serán escalados junto con toda la aplicación.
+         */
+        .app-shell .overlay {
+            width: 100%;
+            height: 100%;
+        }
+
+        /*
+         * Evitar que el navegador aplique comportamientos de
+         * selección o desplazamiento táctil sobre el escenario.
+         */
+        .game-stage {
+            touch-action: manipulation;
+        }
+    </style>
+
+    <script src="js/host-bridge.js"></script>
+    <script src="js/game.js" defer></script>
+</head>
+
+<body>
+
+    <!--
+        VIEWPORT DEL JUEGO
+
+        Este elemento representa el espacio disponible en:
+        navegador / WebView Android.
+    -->
+    <div class="game-stage" id="game-stage">
+
+        <!--
+            ESCENARIO DE DISEÑO
+
+            Resolución base:
+            1366 × 768
+
+            Este elemento será escalado proporcionalmente.
+        -->
+        <div class="scene-wrapper" id="scene-wrapper">
+            <div class="app-shell" id="app">
+
+            <header class="topbar">
+
+                <a
+                    class="brand"
+                    href="./"
+                    aria-label="Jardín Inteligente"
+                >
+                    <img
+                        src="imagenes/branding/logoSinFondo.png"
+                        alt="Jardín Inteligente"
+                        width="144"
+                        height="58"
+                    >
+                </a>
+
+                <h1 class="game-title">
+                    <span aria-hidden="true">💧</span>
+                    ¿Regar o esperar?
+                </h1>
+
+                <div
+                    class="wallet"
+                    aria-label="Progreso acumulado"
+                >
+
+                    <div class="wallet-item">
+
+                        <img
+                            src="imagenes/ui/m.png"
+                            alt=""
+                            width="32"
+                            height="32"
+                        >
+
+                        <span>
+                            <strong id="total-coins">0</strong>
+                            <small>Monedas</small>
+                        </span>
+
+                    </div>
+
+                    <div class="wallet-item">
+
+                        <img
+                            src="imagenes/ui/xp.png"
+                            alt=""
+                            width="32"
+                            height="32"
+                        >
+
+                        <span>
+                            <strong id="total-xp">0</strong>
+                            <small>XP</small>
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <main
+                class="garden"
+                id="garden"
+            >
+
+                <div class="game-layout">
+
+                    <!-- ============================= -->
+                    <!-- COLUMNA IZQUIERDA -->
+                    <!-- ============================= -->
+
+                    <aside
+                        class="side-column"
+                        aria-label="Estado del jardín"
+                    >
+
+                        <section
+                            class="card sensor-card"
+                            aria-labelledby="sensor-heading"
+                        >
+
+                            <div class="card-heading">
+
+                                <span
+                                    class="heading-icon"
+                                    aria-hidden="true"
+                                >
+                                    📊
+                                </span>
+
+                                <h2 id="sensor-heading">
+                                    Datos del sensor
+                                </h2>
+
+                                <span class="sensor-live">
+                                    <span></span>
+                                    EN VIVO
+                                </span>
+
+                            </div>
+
+
+                            <dl class="sensor-list">
+
+                                <div class="sensor-row">
+
+                                    <dt>
+                                        Humedad del suelo
+                                    </dt>
+
+                                    <dd id="sensor-moisture">
+                                        —
+                                    </dd>
+
+                                </div>
+
+
+                                <div class="sensor-row">
+
+                                    <dt>
+                                        Temperatura
+                                    </dt>
+
+                                    <dd id="sensor-temperature">
+                                        —
+                                    </dd>
+
+                                </div>
+
+
+                                <div class="sensor-row">
+
+                                    <dt>
+                                        Último riego
+                                    </dt>
+
+                                    <dd id="sensor-watered">
+                                        —
+                                    </dd>
+
+                                </div>
+
+
+                                <div class="health-row">
+
+                                    <dt>
+                                        Estado de la planta
+                                    </dt>
+
+                                    <dd id="plant-health">
+                                        —
+                                    </dd>
+
+                                </div>
+
+                            </dl>
+
+                        </section>
+
+
+                        <section
+                            class="card progress-card"
+                            aria-labelledby="progress-heading"
+                        >
+
+                            <div class="progress-title">
+
+                                <h2 id="progress-heading">
+
+                                    🌱 Nivel
+
+                                    <span id="level-number">
+                                        1
+                                    </span>
+
+                                    :
+
+                                    <span id="level-name">
+                                        Semilla
+                                    </span>
+
+                                </h2>
+
+                                <span
+                                    class="round-count"
+                                    id="round-count"
+                                >
+                                    Partida lista
+                                </span>
+
+                            </div>
+
+
+                            <div
+                                class="progress-track"
+                                role="progressbar"
+                                aria-label="Experiencia del nivel"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                                aria-valuenow="0"
+                            >
+
+                                <div id="level-progress"></div>
+
+                            </div>
+
+
+                            <div class="progress-caption">
+
+                                <span id="xp-progress">
+                                    0 / 100 XP
+                                </span>
+
+                                <span id="streak">
+                                    🔥 Racha: 0
+                                </span>
+
+                            </div>
+
+                        </section>
+
+                    </aside>
+
+
+                    <!-- ============================= -->
+                    <!-- CENTRO -->
+                    <!-- ============================= -->
+
+                    <section
+                        class="plant-stage"
+                        aria-label="Planta y mascota del jardín"
+                    >
+
+                        <div
+                            class="pet-bubble"
+                            id="pet-bubble"
+                            hidden
+                        >
+
+                            <img
+                                id="pet-image"
+                                src="imagenes/mascotas/af.png"
+                                alt=""
+                                width="84"
+                                height="84"
+                            >
+
+                            <span id="pet-name">
+                                Miel
+                            </span>
+
+                        </div>
+
+
+                        <div
+                            class="plant-glow"
+                            aria-hidden="true"
+                        ></div>
+
+
+                        <img
+                            class="plant-image"
+                            id="plant-image"
+                            src="imagenes/plantas/geranio.png"
+                            alt="Geranio en maceta"
+                            width="360"
+                            height="420"
+                        >
+
+
+                        <div
+                            class="plant-label"
+                            id="plant-label"
+                        >
+                            Tu jardín te espera
+                        </div>
+
+                    </section>
+
+
+                    <!-- ============================= -->
+                    <!-- COLUMNA DERECHA -->
+                    <!-- ============================= -->
+
+                    <section
+                        class="interaction-column"
+                        aria-label="Decisión de riego"
+                    >
+
+                        <section
+                            class="card decision-card"
+                            id="decision-card"
+                            aria-labelledby="decision-heading"
+                        >
+
+                            <div class="round-label">
+
+                                <span id="round-label">
+                                    RONDA 1 DE 6
+                                </span>
+
+                                <span aria-hidden="true">
+                                    ✦
+                                </span>
+
+                            </div>
+
+
+                            <h2 id="decision-heading">
+                                ¿Qué debes hacer?
+                            </h2>
+
+
+                            <p
+                                class="scenario-copy"
+                                id="scenario-copy"
+                            >
+                                Observa los datos del sensor y ayuda
+                                a tu planta.
+                            </p>
+
+
+                            <div
+                                class="action-list"
+                                id="action-list"
+                            >
+
+                                <button
+                                    class="action-button water-button"
+                                    type="button"
+                                    data-action="answer"
+                                    data-answer="REGAR"
+                                    disabled
+                                >
+
+                                    <span class="action-letter">
+                                        A
+                                    </span>
+
+                                    <span
+                                        class="action-emoji"
+                                        aria-hidden="true"
+                                    >
+                                        💧
+                                    </span>
+
+                                    <span>
+                                        Regar
+                                    </span>
+
+                                </button>
+
+
+                                <button
+                                    class="action-button wait-button"
+                                    type="button"
+                                    data-action="answer"
+                                    data-answer="ESPERAR"
+                                    disabled
+                                >
+
+                                    <span class="action-letter">
+                                        B
+                                    </span>
+
+                                    <span
+                                        class="action-emoji"
+                                        aria-hidden="true"
+                                    >
+                                        ⏳
+                                    </span>
+
+                                    <span>
+                                        Esperar y monitorear
+                                    </span>
+
+                                </button>
+
+                            </div>
+
+
+                            <p
+                                class="tip-line"
+                                id="tip-line"
+                            >
+                                Pulsa «Comenzar partida» para jugar.
+                            </p>
+
+
+                            <div
+                                class="feedback"
+                                id="feedback"
+                                role="status"
+                                aria-live="polite"
+                                hidden
+                            >
+
+                                <strong id="feedback-title"></strong>
+
+                                <p id="feedback-copy"></p>
+
+                                <button
+                                    class="continue-button"
+                                    id="continue-button"
+                                    type="button"
+                                    data-action="continue"
+                                >
+                                    Continuar
+                                    <span aria-hidden="true">
+                                        →
+                                    </span>
+                                </button>
+
+                            </div>
+
+                        </section>
+
+                    </section>
+
+                </div>
+
+
+                <footer class="garden-footer">
+                    🌿 Invernadero de riego inteligente
+                    <span>•</span>
+                    Aprende jugando
+                </footer>
+
+            </main>
+
+
+            <p
+                class="storage-notice"
+                id="storage-notice"
+                role="status"
+                hidden
+            ></p>
+
+
+            <!-- ============================= -->
+            <!-- PANTALLA INICIAL -->
+            <!-- ============================= -->
+
+            <section
+                class="overlay"
+                id="start-overlay"
+                aria-labelledby="start-heading"
+            >
+
+                <div class="overlay-card welcome-card">
+
+                    <img
+                        class="welcome-logo"
+                        src="imagenes/branding/logoSinFondo.png"
+                        alt=""
+                        width="190"
+                        height="90"
+                    >
+
+                    <p class="eyebrow">
+                        MINIJUEGO · 6 RONDAS
+                    </p>
+
+                    <h2 id="start-heading">
+                        ¡Cuida tu jardín!
+                    </h2>
+
+                    <p>
+                        Lee la humedad y la temperatura.
+                        Decide si cada planta necesita agua
+                        o si es mejor esperar.
+                    </p>
+
+                    <div class="how-to-play">
+
+                        <span>💧</span>
+
+                        <span>
+                            Suelo seco: regar
+                        </span>
+
+                        <span class="how-to-divider">
+                            ·
+                        </span>
+
+                        <span>
+                            Suelo húmedo: esperar
+                        </span>
+
+                    </div>
+
+                    <button
+                        class="primary-button"
+                        type="button"
+                        data-action="start"
+                    >
+                        Comenzar partida
+                        <span aria-hidden="true">
+                            →
+                        </span>
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- ============================= -->
+            <!-- RESULTADO -->
+            <!-- ============================= -->
+
+            <section
+                class="overlay"
+                id="result-overlay"
+                aria-labelledby="result-heading"
+                hidden
+            >
+
+                <div class="overlay-card result-card">
+
+                    <div
+                        class="result-emblem"
+                        aria-hidden="true"
+                    >
+                        🌿
+                    </div>
+
+                    <p class="eyebrow">
+                        PARTIDA TERMINADA
+                    </p>
+
+                    <h2 id="result-heading">
+                        ¡Buen trabajo, jardinero!
+                    </h2>
+
+                    <p
+                        class="result-score"
+                        id="result-score"
+                    >
+                        Acertaste 0 de 6 rondas
+                    </p>
+
+
+                    <div class="reward-summary">
+
+                        <div>
+
+                            <img
+                                src="imagenes/ui/ms.png"
+                                alt=""
+                                width="36"
+                                height="36"
+                            >
+
+                            <strong id="earned-coins">
+                                +0
+                            </strong>
+
+                            <span>
+                                Monedas
+                            </span>
+
+                        </div>
+
+
+                        <div>
+
+                            <img
+                                src="imagenes/ui/xp.png"
+                                alt=""
+                                width="36"
+                                height="36"
+                            >
+
+                            <strong id="earned-xp">
+                                +0
+                            </strong>
+
+                            <span>
+                                Experiencia
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <p
+                        class="result-message"
+                        id="result-message"
+                    ></p>
+
+
+                    <button
+                        class="primary-button"
+                        type="button"
+                        data-action="start"
+                    >
+                        Jugar otra vez
+                        <span aria-hidden="true">
+                            ↻
+                        </span>
+                    </button>
+
+                </div>
+
+            </section>
+
+        </div>
+    </div>
+
+
+
+</body>
+</html>

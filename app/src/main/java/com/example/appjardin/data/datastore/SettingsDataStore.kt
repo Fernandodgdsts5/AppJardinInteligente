@@ -24,6 +24,7 @@ class SettingsDataStore(private val context: Context) {
         val LAST_DISCONNECT_TIME = longPreferencesKey("last_disconnect_time")
         val DEFAULTS_SEEDED = booleanPreferencesKey("defaults_seeded")
         val SELECTED_PET_ID = stringPreferencesKey("selected_pet_id")
+        val SELECTED_THEME = stringPreferencesKey("selected_theme")
         val LEGACY_PET_NAME = stringPreferencesKey("pet_name")
 
         val GAME_COINS = intPreferencesKey("game_coins")
@@ -73,6 +74,9 @@ class SettingsDataStore(private val context: Context) {
 
     val selectedPetIdFlow: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[SELECTED_PET_ID] ?: "gusano" }
+
+    val selectedThemeIdFlow: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[SELECTED_THEME] ?: "selva" }
 
     val coinsFlow: Flow<Int> = context.dataStore.data
         .map { preferences -> preferences[GAME_COINS] ?: 0 }
@@ -322,6 +326,10 @@ class SettingsDataStore(private val context: Context) {
 
     suspend fun saveSelectedPetId(id: String) {
         context.dataStore.edit { preferences -> preferences[SELECTED_PET_ID] = id }
+    }
+
+    suspend fun saveSelectedTheme(id: String) {
+        context.dataStore.edit { preferences -> preferences[SELECTED_THEME] = id }
     }
 
     suspend fun savePetName(petId: String, name: String) {

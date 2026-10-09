@@ -58,6 +58,15 @@
     <string name="diagnose_plant">Diagnosticar mi planta</string>
     <string name="advice_button">Dato curioso</string>
     <string name="nav_missions">Misiones</string>
+    <string name="nav_play">Jugar</string>
+    <string name="theme_section_label">Tema</string>
+    <string name="theme_selva">Selva</string>
+    <string name="theme_atardecer">Atardecer</string>
+    <string name="theme_anochecer">Anochecer</string>
+    <string name="theme_playa">Playa</string>
+    <string name="theme_semaforo">Semáforo</string>
+    <string name="minijuego_btn_start">Iniciar</string>
+    <string name="minijuego_btn_exit">Salir</string>
     <string name="unlock_mission_dialog_title">Mascota bloqueada</string>
     <string name="unlock_mission_dialog_text">Completa misiones para desbloquear a %s</string>
     <string name="btn_go">Ir</string>
@@ -185,4 +194,17 @@
         <item>La piel del geco repele el agua, lo que le permite mantenerse seco durante lluvias intensas en la vegetación.</item>
         <item>Muchas plantas trepadoras ofrecen cobijo ideal para que los gecos descansen durante las horas de sol.</item>
     </string-array>
+
+    <string name="congratulations_title">¡Felicitaciones!</string>
+    <string name="congratulations_text">Has obtenido a %s</string>
+    <string name="btn_equip">Equipar</string>
+
+    <string name="pet_desc_larva">Las larvas de mariposa devoran hojas con gran apetito mientras se preparan para su maravillosa transformación.</string>
+    <string name="pet_desc_gusano">Las lombrices de tierra excavan galerías subterráneas que enriquecen el suelo y llenan de aire las raíces.</string>
+    <string name="pet_desc_hormiga">Las hormigas son defensoras trabajadoras del jardín que ayudan a esparcir semillas y proteger brotes tiernos.</string>
+    <string name="pet_desc_chanchito">Los chanchitos de tierra son expertos recicladores que descomponen hojas caídas en tierra fértil.</string>
+    <string name="pet_desc_abeja">Las abejas son polinizadoras incansables que visitan flores llevando vida y dulzura a todo el jardín.</string>
+    <string name="pet_desc_reygeko">El reygeko es un vigilante sigiloso que protege el follaje cazando pequeños insectos en las hojas.</string>
+    <string name="cd_torch_turn_on">Encender linterna</string>
+    <string name="cd_torch_turn_off">Apagar linterna</string>
 </resources>

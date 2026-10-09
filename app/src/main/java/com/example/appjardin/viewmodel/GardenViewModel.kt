@@ -11,6 +11,7 @@ import com.example.appjardin.ble.BleManager
 import com.example.appjardin.data.Repository
 import com.example.appjardin.data.local.PlantEntity
 import com.example.appjardin.data.local.SessionEntity
+import com.example.appjardin.model.AppTheme
 import com.example.appjardin.model.Config
 import com.example.appjardin.model.MoistureState
 import com.example.appjardin.model.Pet
@@ -85,6 +86,11 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     val selectedPet: StateFlow<Pet> = selectedPetId
         .map { Pet.fromId(it) }
         .stateIn(viewModelScope, SharingStarted.Lazily, Pet.GUSANO)
+
+    val selectedTheme: StateFlow<AppTheme> = repository.selectedThemeIdFlow
+        .map { AppTheme.fromId(it) }
+        .catch { Log.e("GardenViewModel", "Error fetching selected theme", it); emit(AppTheme.SELVA) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppTheme.SELVA)
 
     private val _selectedPlant = MutableStateFlow<PlantEntity?>(null)
     val selectedPlant: StateFlow<PlantEntity?> = _selectedPlant
@@ -434,6 +440,12 @@ class GardenViewModel(application: Application) : AndroidViewModel(application) 
     fun unlockPet(petId: String) {
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
             repository.unlockPet(petId)
+        }
+    }
+
+    fun selectTheme(themeId: String) {
+        viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
+            repository.saveSelectedTheme(themeId)
         }
     }
 

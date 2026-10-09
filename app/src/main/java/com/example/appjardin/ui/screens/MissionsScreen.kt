@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +87,7 @@ fun MissionsScreen(
 
     var selectedMissionDetail by remember { mutableStateOf<MissionDef?>(null) }
     var chestRewardDialogData by remember { mutableStateOf<String?>(null) }
+    var unlockedPetForCongratulations by rememberSaveable { mutableStateOf<Pet?>(null) }
 
     val userPlantsCount = remember(plants) { plants.count { it.isUserCreated } }
     val customImageCount = remember(plants) { plants.count { !it.imagePath.isNullOrBlank() } }
@@ -323,7 +325,7 @@ fun MissionsScreen(
                                     if (canUnlock) {
                                         viewModel.buyPetAtomic(reygeko.id, GameConfig.OSCAR_COINS, GameConfig.OSCAR_EXP) { success ->
                                             if (success) {
-                                                Toast.makeText(context, "¡Has desbloqueado a Oscar!", Toast.LENGTH_SHORT).show()
+                                                unlockedPetForCongratulations = reygeko
                                             } else {
                                                 Toast.makeText(context, "Recursos insuficientes", Toast.LENGTH_SHORT).show()
                                             }
@@ -737,6 +739,24 @@ fun MissionsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    // Pet Congratulations Dialog
+    if (unlockedPetForCongratulations != null) {
+        val pet = unlockedPetForCongratulations!!
+        val petName = petNames[pet.id] ?: pet.defaultName
+        PetCongratulationsDialog(
+            pet = pet,
+            effectivePetName = petName,
+            activeColor = activeColor,
+            onEquip = {
+                viewModel.selectPet(pet.id)
+                unlockedPetForCongratulations = null
+            },
+            onDismiss = {
+                unlockedPetForCongratulations = null
+            }
+        )
     }
 }
 

@@ -51,6 +51,7 @@ import com.example.appjardin.viewmodel.ConnectionMode
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.res.painterResource
+import com.example.appjardin.model.AppTheme
 import com.example.appjardin.model.Pet
 import com.example.appjardin.model.PetMood
 import coil.compose.AsyncImage
@@ -93,6 +94,8 @@ fun SettingsScreen(
     val plants by viewModel.allPlants.collectAsStateWithLifecycle()
     val selectedPlant by viewModel.selectedPlant.collectAsStateWithLifecycle()
     val telemetry by viewModel.telemetry.collectAsStateWithLifecycle(initialValue = null)
+    val unlockedPets by viewModel.unlockedPets.collectAsStateWithLifecycle()
+    val petNames by viewModel.petNames.collectAsStateWithLifecycle()
 
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
     val connectionMode by viewModel.connectionMode.collectAsStateWithLifecycle()
@@ -146,6 +149,7 @@ fun SettingsScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var plantToEdit by remember { mutableStateOf<PlantEntity?>(null) }
     var lockedPetToUnlock by remember { mutableStateOf<Pet?>(null) }
+    var unlockedPetForCongratulations by rememberSaveable { mutableStateOf<Pet?>(null) }
     
     // Plant detail bottom sheet state surviving rotation via ID
     var plantDetailId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -412,6 +416,7 @@ fun SettingsScreen(
             val selectedPetName by viewModel.selectedPetName.collectAsStateWithLifecycle()
             val selectedPet by viewModel.selectedPet.collectAsStateWithLifecycle()
             var isPetExpanded by rememberSaveable { mutableStateOf(false) }
+            var isThemeExpanded by rememberSaveable { mutableStateOf(false) }
             var isEditingPetName by remember { mutableStateOf(false) }
 
             val currentEffectiveName = petNames[selectedPet.id] ?: selectedPet.defaultName
@@ -423,6 +428,15 @@ fun SettingsScreen(
 
             LaunchedEffect(isPetExpanded) {
                 if (isPetExpanded) {
+                    isThemeExpanded = false
+                    delay(200)
+                    scrollState.animateScrollTo(scrollState.maxValue)
+                }
+            }
+
+            LaunchedEffect(isThemeExpanded) {
+                if (isThemeExpanded) {
+                    isPetExpanded = false
                     delay(200)
                     scrollState.animateScrollTo(scrollState.maxValue)
                 }
@@ -585,14 +599,16 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 rowPets.forEach { pet ->
+                                    val isPetLocked = pet.isLocked && !unlockedPets.contains(pet.id)
                                     PetGridCell(
                                         pet = pet,
                                         selectedPet = selectedPet,
                                         petNames = petNames,
+                                        unlockedPets = unlockedPets,
                                         activeColor = activeColor,
                                         modifier = Modifier.weight(1f),
                                         onPetClick = {
-                                            if (pet.isLocked) {
+                                            if (isPetLocked) {
                                                 lockedPetToUnlock = pet
                                             } else {
                                                 viewModel.selectPet(pet.id)
@@ -610,13 +626,14 @@ fun SettingsScreen(
                         // Reygeko double cell at the end (double height)
                         val reygeko = Pet.REYGEKO
                         val isReygekoSelected = selectedPet == reygeko
+                        val isReygekoLocked = reygeko.isLocked && !unlockedPets.contains(reygeko.id)
                         val reygekoEffectiveName = petNames[reygeko.id] ?: reygeko.defaultName
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(180.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .alpha(if (reygeko.isLocked) 0.5f else 1f)
+                                .alpha(if (isReygekoLocked) 0.5f else 1f)
                                 .border(
                                     BorderStroke(
                                         width = if (isReygekoSelected) 2.dp else 1.dp,
@@ -626,7 +643,7 @@ fun SettingsScreen(
                                 )
                                 .background(if (isReygekoSelected) activeColor.copy(alpha = 0.05f) else Color.White)
                                 .clickable {
-                                    if (reygeko.isLocked) {
+                                    if (isReygekoLocked) {
                                         lockedPetToUnlock = reygeko
                                     } else {
                                         viewModel.selectPet(reygeko.id)
@@ -666,7 +683,7 @@ fun SettingsScreen(
                                             )
                                         }
                                     }
-                                    if (reygeko.isLocked) {
+                                    if (isReygekoLocked) {
                                         Box(
                                             modifier = Modifier
                                                 .size(26.dp)
@@ -690,6 +707,121 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = DarkText
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // THEME SELECTOR SECTION
+            val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(110.dp)
+                    .clickable { isThemeExpanded = !isThemeExpanded },
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.theme_section_label),
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(selectedTheme.titleRes),
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .aspectRatio(1f)
+                            .background(CreamBackground),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedTheme.assetPath != null) {
+                            val thumbRequest = remember(context, selectedTheme.assetPath) {
+                                ImageRequest.Builder(context)
+                                    .data("file:///android_asset/${selectedTheme.assetPath}")
+                                    .size(200, 200)
+                                    .crossfade(false)
+                                    .build()
+                            }
+                            AsyncImage(
+                                model = thumbRequest,
+                                contentDescription = stringResource(selectedTheme.titleRes),
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.size(16.dp).background(ColorLowMoisture, CircleShape))
+                                Box(modifier = Modifier.size(16.dp).background(ColorGoodMoisture, CircleShape))
+                                Box(modifier = Modifier.size(16.dp).background(ColorExcessMoisture, CircleShape))
+                            }
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(visible = isThemeExpanded) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val themes = AppTheme.entries
+                        themes.chunked(2).forEach { rowThemes ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowThemes.forEach { theme ->
+                                    ThemeGridCell(
+                                        theme = theme,
+                                        selectedTheme = selectedTheme,
+                                        activeColor = activeColor,
+                                        modifier = Modifier.weight(1f),
+                                        onThemeClick = {
+                                            viewModel.selectTheme(theme.id)
+                                        }
+                                    )
+                                }
+                                if (rowThemes.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
                         }
                     }
@@ -793,19 +925,23 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             if (canAfford) {
-                                when (pet) {
+                                val (coinsToDeduct, expToDeduct) = when (pet) {
                                     Pet.HORMIGA, Pet.CHANCHITO -> {
-                                        if (coins >= reqCoins) viewModel.deductResources(reqCoins, 0)
-                                        else viewModel.deductResources(0, reqExp)
+                                        if (coins >= reqCoins) Pair(reqCoins, 0) else Pair(0, reqExp)
                                     }
                                     Pet.ABEJA, Pet.REYGEKO -> {
-                                        viewModel.deductResources(reqCoins, reqExp)
+                                        Pair(reqCoins, reqExp)
                                     }
-                                    else -> {}
+                                    else -> Pair(0, 0)
                                 }
-                                viewModel.unlockPet(pet.id)
-                                lockedPetToUnlock = null
-                                Toast.makeText(context, "¡${pet.defaultName} desbloqueado!", Toast.LENGTH_SHORT).show()
+                                viewModel.buyPetAtomic(pet.id, coinsToDeduct, expToDeduct) { success ->
+                                    if (success) {
+                                        lockedPetToUnlock = null
+                                        Toast.makeText(context, "¡${pet.defaultName} desbloqueado!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Recursos insuficientes", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             } else {
                                 Toast.makeText(context, "Recursos insuficientes", Toast.LENGTH_SHORT).show()
                             }
@@ -833,6 +969,24 @@ fun SettingsScreen(
                             Text("Cancelar", color = Color.Gray)
                         }
                     }
+                }
+            )
+        }
+
+        // Pet Congratulations Dialog
+        if (unlockedPetForCongratulations != null) {
+            val pet = unlockedPetForCongratulations!!
+            val petName = petNames[pet.id] ?: pet.defaultName
+            PetCongratulationsDialog(
+                pet = pet,
+                effectivePetName = petName,
+                activeColor = activeColor,
+                onEquip = {
+                    viewModel.selectPet(pet.id)
+                    unlockedPetForCongratulations = null
+                },
+                onDismiss = {
+                    unlockedPetForCongratulations = null
                 }
             )
         }
@@ -1706,20 +1860,115 @@ private fun cleanupTempUri(uri: Uri?) {
 }
 
 @Composable
+fun ThemeGridCell(
+    theme: AppTheme,
+    selectedTheme: AppTheme,
+    activeColor: Color,
+    modifier: Modifier = Modifier,
+    onThemeClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val isSelected = selectedTheme == theme
+    val themeTitle = stringResource(theme.titleRes)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(
+                BorderStroke(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) activeColor else Color.LightGray.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(if (isSelected) activeColor.copy(alpha = 0.05f) else Color.White)
+            .clickable { onThemeClick() }
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(CreamBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                if (theme.assetPath != null) {
+                    val thumbRequest = remember(context, theme.assetPath) {
+                        ImageRequest.Builder(context)
+                            .data("file:///android_asset/${theme.assetPath}")
+                            .size(180, 180)
+                            .crossfade(false)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = thumbRequest,
+                        contentDescription = themeTitle,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.size(18.dp).background(ColorLowMoisture, CircleShape))
+                        Box(modifier = Modifier.size(18.dp).background(ColorGoodMoisture, CircleShape))
+                        Box(modifier = Modifier.size(18.dp).background(ColorExcessMoisture, CircleShape))
+                    }
+                }
+
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .background(activeColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Seleccionado",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = themeTitle,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkText
+            )
+        }
+    }
+}
+
+@Composable
 fun PetGridCell(
     pet: Pet,
     selectedPet: Pet,
     petNames: Map<String, String>,
+    unlockedPets: Set<String> = emptySet(),
     activeColor: Color,
     modifier: Modifier = Modifier,
     onPetClick: () -> Unit
 ) {
     val isPetSelected = selectedPet == pet
+    val isPetLocked = pet.isLocked && !unlockedPets.contains(pet.id)
     val petEffectiveName = petNames[pet.id] ?: pet.defaultName
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .alpha(if (pet.isLocked) 0.5f else 1f)
+            .alpha(if (isPetLocked) 0.5f else 1f)
             .border(
                 BorderStroke(
                     width = if (isPetSelected) 2.dp else 1.dp,
@@ -1761,7 +2010,7 @@ fun PetGridCell(
                         )
                     }
                 }
-                if (pet.isLocked) {
+                if (isPetLocked) {
                     Box(
                         modifier = Modifier
                             .size(24.dp)

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import com.example.appjardin.data.datastore.SettingsDataStore
+import com.example.appjardin.data.datastore.TestStartingBalance
 import com.example.appjardin.data.local.AppDatabase
 import com.example.appjardin.data.local.DiagnosisEntity
 import com.example.appjardin.data.local.PlantEntity
@@ -43,6 +44,7 @@ class Repository(private val context: Context) {
     val userNameFlow: Flow<String> = settingsDataStore.userNameFlow
     val selectedPlantIdFlow: Flow<Int> = settingsDataStore.selectedPlantIdFlow
     val selectedPetIdFlow: Flow<String> = settingsDataStore.selectedPetIdFlow
+    val selectedThemeIdFlow: Flow<String> = settingsDataStore.selectedThemeIdFlow
 
     val coinsFlow: Flow<Int> = settingsDataStore.coinsFlow
     val expFlow: Flow<Int> = settingsDataStore.expFlow
@@ -73,6 +75,7 @@ class Repository(private val context: Context) {
     suspend fun initializeGameOnStartup(): Int = withContext(Dispatchers.IO) {
         var correctedCount = 0
         try {
+            TestStartingBalance.applyIfFirstInstall(context)
             settingsDataStore.checkAndMigrateLegacyPetName()
             correctedCount = settingsDataStore.checkCatalogVersionAndSanitize()
             Log.d("Repository", "Catalog sanitization correction count: $correctedCount")
@@ -243,6 +246,14 @@ class Repository(private val context: Context) {
             settingsDataStore.saveSelectedPetId(id)
         } catch (e: Exception) {
             Log.e("Pet", "Error saving selected pet id", e)
+        }
+    }
+
+    suspend fun saveSelectedTheme(id: String) = withContext(Dispatchers.IO) {
+        try {
+            settingsDataStore.saveSelectedTheme(id)
+        } catch (e: Exception) {
+            Log.e("Theme", "Error saving selected theme id", e)
         }
     }
 

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -42,7 +43,9 @@ import androidx.navigation.NavType
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.appjardin.data.local.DiagnosisEntity
+import com.example.appjardin.model.AppTheme
 import com.example.appjardin.model.MoistureState
+import com.example.appjardin.model.computeBottomBarColors
 import com.example.appjardin.ui.screens.*
 import com.example.appjardin.ui.theme.*
 import com.example.appjardin.viewmodel.DiagnosisViewModel
@@ -318,16 +321,21 @@ fun MainAppContent(
         }
     }
 
+    val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
+    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route ?: "main"
+
+    val barColors = remember(selectedTheme, currentRoute, activeColor) {
+        computeBottomBarColors(selectedTheme, currentRoute, activeColor)
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White,
-                contentColor = activeColor
+                containerColor = barColors.containerColor,
+                contentColor = barColors.otherSelectedTextColor
             ) {
-                val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-
                 NavigationBarItem(
                     icon = {
                         Icon(
@@ -343,11 +351,11 @@ fun MainAppContent(
                         }
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColor = ColorVerdeAlegre,
-                        indicatorColor = ColorVerdeAlegre,
-                        unselectedIconColor = Color.Gray,
-                        unselectedTextColor = Color.Gray
+                        selectedIconColor = barColors.estadoSelectedIconColor,
+                        selectedTextColor = barColors.estadoSelectedTextColor,
+                        indicatorColor = barColors.estadoIndicatorColor,
+                        unselectedIconColor = barColors.estadoUnselectedIconColor,
+                        unselectedTextColor = barColors.estadoUnselectedTextColor
                     )
                 )
 
@@ -368,11 +376,36 @@ fun MainAppContent(
                         }
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColor = activeColor,
-                        indicatorColor = activeColor,
-                        unselectedIconColor = Color.Gray,
-                        unselectedTextColor = Color.Gray
+                        selectedIconColor = barColors.otherSelectedIconColor,
+                        selectedTextColor = barColors.otherSelectedTextColor,
+                        indicatorColor = barColors.otherIndicatorColor,
+                        unselectedIconColor = barColors.otherUnselectedIconColor,
+                        unselectedTextColor = barColors.otherUnselectedTextColor
+                    )
+                )
+
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.SportsEsports,
+                            contentDescription = stringResource(R.string.nav_play)
+                        )
+                    },
+                    label = { Text(stringResource(R.string.nav_play), fontWeight = FontWeight.Bold) },
+                    selected = currentRoute == "play",
+                    onClick = {
+                        bottomNavController.navigate("play") {
+                            launchSingleTop = true
+                            restoreState = true
+                            popUpTo("main")
+                        }
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = barColors.otherSelectedIconColor,
+                        selectedTextColor = barColors.otherSelectedTextColor,
+                        indicatorColor = barColors.otherIndicatorColor,
+                        unselectedIconColor = barColors.otherUnselectedIconColor,
+                        unselectedTextColor = barColors.otherUnselectedTextColor
                     )
                 )
 
@@ -391,11 +424,11 @@ fun MainAppContent(
                         }
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColor = activeColor,
-                        indicatorColor = activeColor,
-                        unselectedIconColor = Color.Gray,
-                        unselectedTextColor = Color.Gray
+                        selectedIconColor = barColors.otherSelectedIconColor,
+                        selectedTextColor = barColors.otherSelectedTextColor,
+                        indicatorColor = barColors.otherIndicatorColor,
+                        unselectedIconColor = barColors.otherUnselectedIconColor,
+                        unselectedTextColor = barColors.otherUnselectedTextColor
                     )
                 )
 
@@ -414,11 +447,11 @@ fun MainAppContent(
                         }
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColor = activeColor,
-                        indicatorColor = activeColor,
-                        unselectedIconColor = Color.Gray,
-                        unselectedTextColor = Color.Gray
+                        selectedIconColor = barColors.otherSelectedIconColor,
+                        selectedTextColor = barColors.otherSelectedTextColor,
+                        indicatorColor = barColors.otherIndicatorColor,
+                        unselectedIconColor = barColors.otherUnselectedIconColor,
+                        unselectedTextColor = barColors.otherUnselectedTextColor
                     )
                 )
             }
@@ -446,6 +479,9 @@ fun MainAppContent(
                         viewModel = viewModel,
                         onNavigateToSettingsPets = { bottomNavController.navigate("settings") }
                     ) 
+                }
+                composable("play") {
+                    PlayScreen()
                 }
                 composable("history") { 
                     HistoryScreen(
